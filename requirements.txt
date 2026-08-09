@@ -1,0 +1,6 @@
+ollama
+playwright
+fastmcp
+requests
+openai
+pyotp
