@@ -13,10 +13,10 @@ Flow per page load:
 from __future__ import annotations
 import logging
 
-from context import AgentContext, PortalType
+from context import AgentContext
 from portals import identify_portal
 from observer import OnboardingObserver
-from automator import PortalAutomator
+from automator import AIAutomator
 from modes import make_policy
 from ui import ask_user_yes_no
 
@@ -24,11 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 class Orchestrator:
-    def __init__(self, ctx: AgentContext, use_llm_fallback: bool = True):
+    def __init__(self, ctx: AgentContext):
         self.ctx = ctx
         self.policy = make_policy(ctx.mode)
         self.observer = OnboardingObserver(ctx)
-        self.automator = PortalAutomator(ctx, use_llm_fallback=use_llm_fallback)
+        self.automator = AIAutomator(ctx)
 
     async def on_page_load(self, page) -> None:
         url = page.url
@@ -37,36 +37,63 @@ class Orchestrator:
         if portal is None:
             logger.debug("Ignoring non-study URL: %s", url)
             return
+        
+        logger.info(f"CHECKING IF: {url} needs login")
+        if await self.automator.is_login_page(page):
+            logger.info("LOGIN PAGE FOUND")
+            
+            action_name = f"log in to {url}"
+            async def ask(_name: str) -> bool:
+                return await ask_user_yes_no(
+                    page, f"Should i do the login for: {url}?"
+                )
+            if not await self.policy.should_act(action_name, ask):
+                logger.info(f"Skipping automated login for {url}, but observing new CREDS")
+                self.observer.observe(page)
+                return
 
-        if portal is PortalType.ONBOARDING:
-            await self.observer.observe(page)
+            if not self.ctx.vault.has_credential_for(url):
+                logger.info(f"NO LOGIN CREDS FOR PAGE: {url}, observe the website")
+                self.observer.observe(page)
+                return
+            logger.info("CREDS WAS FOUND, HANDLING LOGIN")
+            
+            await self.policy.before_action(page)
+            try:
+                human_like = self.policy.human_like_typing
+                await self.policy.run_interruptible(
+                    self.automator.login(page, human_like=human_like)
+                )
+            finally:
+                await self.policy.after_action(page)
             return
+        
+        logger.info(f"CHECKING IF: {url} needs 2fa auth")
+        if await self.automator.is_2fa_page(page):
+            logger.info(f"PAGE NEEDS 2FA: {url}")
+            
+            action_name = f"2fa in to {url}"
+            async def ask(_name: str) -> bool:
+                return await ask_user_yes_no(
+                    page, f"Should i do 2fa for: {url}?"
+                )
+            if not await self.policy.should_act(action_name, ask):
+                logger.info(f"Skipping automated 2fa auth for {url}")
+                return
 
-        await self._maybe_login(page, portal)
-
-    async def _maybe_login(self, page, portal: PortalType) -> None:
-        if self.ctx.is_logged_in(portal):
+            if not self.ctx.vault.has_credential_for(url):
+                logger.info(f"NO 2FA CREDS FOR PAGE: {url}")
+                return
+            logger.info("HANDLING 2FA CREDS WERE FOUND")
+            
+            await self.policy.before_action(page)
+            try:
+                human_like = self.policy.human_like_typing
+                await self.policy.run_interruptible(
+                    self.automator.submit_2fa(page, human_like)
+                )
+            finally:
+                await self.policy.after_action(page)
             return
-        if not self.ctx.credentials_known():
-            logger.info("Credentials not known yet, skipping login for %s", portal.value)
-            return
-
-        action_name = f"log in to {portal.value}"
-
-        async def ask(_name: str) -> bool:
-            return await ask_user_yes_no(
-                page, f"Soll ich den Login fuer {portal.value} durchfuehren?"
-            )
-
-        if not await self.policy.should_act(action_name, ask):
-            logger.info("Skipping automated login for %s (mode/user declined)", portal.value)
-            return
-
-        await self.policy.before_action(page)
-        try:
-            human_like = self.policy.human_like_typing
-            await self.policy.run_interruptible(
-                self.automator.login(page, portal, human_like=human_like)
-            )
-        finally:
-            await self.policy.after_action(page)
+        
+        logger.info(f"SKIP NOT A LOGIN OR 2FA PAGE: {url}")

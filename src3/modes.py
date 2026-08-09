@@ -128,9 +128,12 @@ class AutonomousFastPolicy(ModePolicy):
 
 
 def make_policy(mode: AgentMode) -> ModePolicy:
-    return {
-        AgentMode.MANUAL: ManualPolicy,
-        AgentMode.ASSISTED: AssistedPolicy,
-        AgentMode.AUTONOMOUS_SLOW: AutonomousSlowPolicy,
-        AgentMode.AUTONOMOUS_FAST: AutonomousFastPolicy,
-    }[mode]()
+    match mode:
+        case AgentMode.MANUAL:
+            return ManualPolicy()
+        case AgentMode.ASSISTED:
+            return AssistedPolicy()
+        case AgentMode.AUTONOMOUS_SLOW:
+            return AutonomousSlowPolicy()
+        case AgentMode.AUTONOMOUS_FAST:
+            return AutonomousFastPolicy()

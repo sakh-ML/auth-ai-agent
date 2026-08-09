@@ -36,9 +36,9 @@ MODE_MAP = {
 }
 
 
-async def run(start_url: str, mode: AgentMode, use_llm_fallback: bool) -> None:
+async def run(start_url: str, mode: AgentMode) -> None:
     ctx = AgentContext(mode=mode)
-    orchestrator = Orchestrator(ctx, use_llm_fallback=use_llm_fallback)
+    orchestrator = Orchestrator(ctx)
 
     async with async_playwright() as playwright:
         browser = await playwright.firefox.launch(headless=False)
@@ -70,13 +70,9 @@ def main() -> None:
         "--url", default="http://localhost:5001/",
         help="Onboarding portal start URL",
     )
-    parser.add_argument(
-        "--no-llm-fallback", action="store_true",
-        help="Disable the LLM fallback and rely only on deterministic selectors",
-    )
     args = parser.parse_args()
 
-    asyncio.run(run(args.url, MODE_MAP[args.mode], use_llm_fallback=not args.no_llm_fallback))
+    asyncio.run(run(args.url, MODE_MAP[args.mode]))
 
 
 if __name__ == "__main__":
