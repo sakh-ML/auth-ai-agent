@@ -58,29 +58,31 @@ class Orchestrator:
             self._on_flight.remove(url)
 
     async def _handle_page(self, page, url) -> str:
-        logger.info(f"CHECKING IF: {url} needs login")
+        logger.info(f"Checking if {url} needs login")
+
         if await self.automator.is_login_page(page):
-            logger.info("LOGIN PAGE FOUND")
+            logger.info("Login page found")
 
             action_name = f"log in to {url}"
 
             async def ask(_name: str) -> bool:
-                return await ask_user_yes_no(page, f"Should i do the login for: {url}?")
+                return await ask_user_yes_no(page, f"Should I do the login for: {url}?")
 
             if not await self.policy.should_act(action_name, ask):
                 logger.info(
-                    f"Skipping automated login for {url}, but observing new CREDS"
+                    f"Skipping automated login for {url}; continuing to observe for credentials"
                 )
                 await self.observer.observe(page)
                 return
 
             if not self.ctx.vault.has_credential_for(url):
                 logger.info(
-                    f"NO LOGIN CREDS FOR PAGE: {url}, observe the website for creds"
+                    f"No login credentials found for {url}; observing the website for credentials"
                 )
                 await self.observer.observe(page)
                 return
-            logger.info("CREDS WAS FOUND, HANDLING LOGIN")
+
+            logger.info("Login credentials found; handling login")
 
             await self.policy.before_action(page)
             try:
@@ -92,23 +94,25 @@ class Orchestrator:
                 await self.policy.after_action(page)
             return
 
-        logger.info(f"CHECKING IF: {url} needs 2fa auth")
+        logger.info(f"Checking if {url} needs 2FA")
+
         if await self.automator.is_2fa_page(page):
-            logger.info(f"PAGE NEEDS 2FA: {url}")
+            logger.info(f"Page requires 2FA: {url}")
 
             action_name = f"2fa in to {url}"
 
             async def ask(_name: str) -> bool:
-                return await ask_user_yes_no(page, f"Should i do 2fa for: {url}?")
+                return await ask_user_yes_no(page, f"Should I do 2FA for: {url}?")
 
             if not await self.policy.should_act(action_name, ask):
-                logger.info(f"Skipping automated 2fa auth for {url}")
+                logger.info(f"Skipping automated 2FA for {url}")
                 return
 
             if not self.ctx.vault.has_credential_for(url):
-                logger.info(f"NO 2FA CREDS FOR PAGE: {url}, skipping ...")
+                logger.info(f"No 2FA credentials found for {url}; skipping")
                 return
-            logger.info("HANDLING 2FA CREDS WERE FOUND")
+
+            logger.info("2FA credentials found; handling 2FA")
 
             await self.policy.before_action(page)
             try:
@@ -120,4 +124,4 @@ class Orchestrator:
                 await self.policy.after_action(page)
             return
 
-        logger.info(f"SKIP NOT A LOGIN OR 2FA PAGE: {url}")
+        logger.info(f"Page is not a login or 2FA page; skipping: {url}")

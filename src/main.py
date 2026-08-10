@@ -25,6 +25,9 @@ from playwright.async_api import async_playwright
 from context import AgentContext, AgentMode
 from orchestrator import Orchestrator
 
+# Get rid of the openai INFO post requests
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -37,10 +40,13 @@ MODE_MAP = {
 
 
 async def run(start_url: str, mode: AgentMode) -> None:
+    logger.info(f"Running Agent in mode: {mode.name.lower().replace('_', '')}")
+
     ctx = AgentContext(mode=mode)
     orchestrator = Orchestrator(ctx)
 
     async with async_playwright() as playwright:
+        logger.info("Starting browser")
         browser = await playwright.firefox.launch(headless=False)
         page = await browser.new_page()
 
@@ -49,6 +55,7 @@ async def run(start_url: str, mode: AgentMode) -> None:
             lambda p=page: asyncio.create_task(orchestrator.on_page_load(p)),
         )
 
+        logger.info(f"Opening start URL: {start_url}")
         await page.goto(start_url)
 
         try:
