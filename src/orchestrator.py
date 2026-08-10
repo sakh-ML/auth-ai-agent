@@ -29,6 +29,7 @@ class Orchestrator:
         self.policy = make_policy(ctx.mode)
         self.observer = AIGenericObserver(ctx)
         self.automator = AIAutomator(ctx)
+        self._on_flight : set[str] = set()
 
     async def on_page_load(self, page) -> None:
 
@@ -44,7 +45,19 @@ class Orchestrator:
         # if portal is None:
         #    logger.warning(f"Ignoring non-study URL: {url}")
         #    return
+        
+        if url in self._on_flight:
+            logger.debug(f"Already processing {url}, ignoring duplicate load event")
+            return
 
+        self._on_flight.add(url)
+
+        try:
+            await self._handle_page(page, url)
+        finally:
+            self._on_flight.remove(url)
+
+    async def _handle_page(self, page, url) -> str:
         logger.info(f"CHECKING IF: {url} needs login")
         if await self.automator.is_login_page(page):
             logger.info("LOGIN PAGE FOUND")
