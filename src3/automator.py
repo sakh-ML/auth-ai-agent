@@ -16,7 +16,7 @@ import pyotp
 
 from client import AIClient, TOOLS, write_in_field, click_element
 from clean_dom import get_page_dom
-from context import AgentContext, PortalType
+from context import AgentContext
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +65,7 @@ def get_totp(totp_secret) -> Optional[str]:
 # ==========================================
 # SYSTEM PROMPTS & PROMPT GENERATORS
 # ==========================================
+
 
 def check_login_system_prompt() -> str:
     return """
@@ -245,6 +246,7 @@ def get_prompt(prompt: Prompt, dom: str) -> str:
 # AI AUTOMATOR CLASS
 # ==========================================
 
+
 class AIAutomator:
     """
     Unified AI Automator class encapsulating DOM classification (is_login_page, is_2fa_page)
@@ -306,12 +308,20 @@ class AIAutomator:
 
                 if real_value is None:
                     logger.error("Calling write in field failed")
-                    logger.error(f"Error getting the real value from placeholder: {raw_val}")
+                    logger.error(
+                        f"Error getting the real value from placeholder: {raw_val}"
+                    )
                     return
 
                 # Redact logs if value is a credential
-                sensitive_placeholders = [PLACEHOLDER_EMAIL, PLACEHOLDER_PASSWORD, PLACEHOLDER_TOTP]
-                log_val = "<redacted>" if raw_val in sensitive_placeholders else real_value
+                sensitive_placeholders = [
+                    PLACEHOLDER_EMAIL,
+                    PLACEHOLDER_PASSWORD,
+                    PLACEHOLDER_TOTP,
+                ]
+                log_val = (
+                    "<redacted>" if raw_val in sensitive_placeholders else real_value
+                )
                 logger.info("Writing in field (%s) with value %s", field, log_val)
 
                 if human_like:
@@ -321,7 +331,9 @@ class AIAutomator:
                     await write_in_field(page, field, real_value)
 
             case _:
-                raise RuntimeError(f"Invalid function tool call for LLM: {function.value}")
+                raise RuntimeError(
+                    f"Invalid function tool call for LLM: {function.value}"
+                )
 
     # ------------------------------------------
     # DETECTION METHODS
@@ -331,12 +343,15 @@ class AIAutomator:
         """Checks if the current page is a login form using LLM classification."""
         try:
             system_prompt = get_system_prompt(SystemPrompt.CHECK_LOGIN_SYSTEM_PROMPT)
-            dom = await get_page_dom(page)
+            #dom = await get_page_dom(page)
+            dom = await page.content()
             prompt = get_prompt(Prompt.CHECK_LOGIN_PROMPT, dom)
 
             input_data = [{"role": "user", "content": f"{prompt}"}]
             ai_client = AIClient()
-            response = ai_client.ask_client(input=input_data, instructions=system_prompt)
+            response = ai_client.ask_client(
+                input=input_data, instructions=system_prompt
+            )
 
             return "yes" in response.output_text.strip().lower()
         except Exception as e:
@@ -347,12 +362,14 @@ class AIAutomator:
         """Checks if the current page is a 2FA/OTP form using LLM classification."""
         try:
             system_prompt = get_system_prompt(SystemPrompt.CHECK_2FA_SYSTEM_PROMPT)
-            dom = await get_page_dom(page)
+            dom = await page.content()
             prompt = get_prompt(Prompt.CHECK_2FA_PROMPT, dom)
 
             input_data = [{"role": "user", "content": f"{prompt}"}]
             ai_client = AIClient()
-            response = ai_client.ask_client(input=input_data, instructions=system_prompt)
+            response = ai_client.ask_client(
+                input=input_data, instructions=system_prompt
+            )
 
             return "yes" in response.output_text.strip().lower()
         except Exception as e:
@@ -363,16 +380,14 @@ class AIAutomator:
     # ACTION METHODS
     # ------------------------------------------
 
-    async def login(
-        self, page, human_like: bool = False
-    ) -> bool:
+    async def login(self, page, human_like: bool = False) -> bool:
         """Performs automated login via LLM function calls and local credential swapping."""
         url = page.url
         logger.info(f"AIAutomator: Handling login for {url}")
 
         try:
             system_prompt = get_system_prompt(SystemPrompt.HANDLE_LOGIN_SYSTEM_PROMPT)
-            dom = await get_page_dom(page)
+            dom = await page.content()
             prompt = get_prompt(Prompt.HANDLE_LOGIN_PROMPT, dom)
 
             input_list = [{"role": "user", "content": f"{prompt}"}]
@@ -388,7 +403,9 @@ class AIAutomator:
                 if item.type == "function_call" and item.name in available_functions:
                     arguments = json.loads(item.arguments)
                     function = FunctionLLMTool(item.name)
-                    await self._execute_function_call(page, function, arguments, human_like)
+                    await self._execute_function_call(
+                        page, function, arguments, human_like
+                    )
 
             return True
 
@@ -425,7 +442,7 @@ class AIAutomator:
 
         try:
             system_prompt = get_system_prompt(SystemPrompt.HANDLE_2FA_SYSTEM_PROMPT)
-            dom = await get_page_dom(page)
+            dom = await page.content()
             prompt = get_prompt(Prompt.HANDLE_2FA_PROMPT, dom)
 
             input_list = [{"role": "user", "content": f"{prompt}"}]
@@ -441,7 +458,9 @@ class AIAutomator:
                 if item.type == "function_call" and item.name in available_functions:
                     arguments = json.loads(item.arguments)
                     function = FunctionLLMTool(item.name)
-                    await self._execute_function_call(page, function, arguments, human_like)
+                    await self._execute_function_call(
+                        page, function, arguments, human_like
+                    )
 
             return True
 

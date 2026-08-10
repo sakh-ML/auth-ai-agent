@@ -10,7 +10,15 @@ instead of asking an LLM to guess generically.
 
 from __future__ import annotations
 from urllib.parse import urlparse
-from context import PortalType
+from enum import Enum
+
+
+class PortalType(Enum):
+    ONBOARDING = 0
+    MAIL = 1
+    LSF = 2
+    MOODLE = 3
+    BOSS = 4
 
 # Adjust ports here to match how you actually launch the 5 Flask apps.
 PORTAL_URL_MAP: dict[tuple[str | None, int | None], PortalType] = {

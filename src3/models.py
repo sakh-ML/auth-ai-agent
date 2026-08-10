@@ -17,7 +17,6 @@ class AgentMode(Enum):
 
 @dataclass
 class Credential:
-    domain: str
     username: Optional[str] = None
     password: Optional[str] = None
     totp_secret: Optional[str] = None
@@ -25,4 +24,4 @@ class Credential:
     def __repr__(self) -> str:
         pwd_status = "SET" if self.password else "EMPTY"
         totp_status = "SET" if self.totp_secret else "EMPTY"
-        return f"<Credential domain={self.domain} user={self.username} pass={pwd_status} totp={totp_status}>"
+        return f"<Credential user={self.username} pass={pwd_status} totp={totp_status}>"

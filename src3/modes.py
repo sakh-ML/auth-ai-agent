@@ -47,8 +47,7 @@ class ModePolicy(ABC):
     in every mode, per the study spec (Studienablauf * = Agent lernt immer)."""
 
     @abstractmethod
-    async def should_act(self, action_name: str, ask_user_fn) -> bool:
-        ...
+    async def should_act(self, action_name: str, ask_user_fn) -> bool: ...
 
     async def before_action(self, page) -> None:
         return None

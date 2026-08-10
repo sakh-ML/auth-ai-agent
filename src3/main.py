@@ -63,11 +63,14 @@ async def run(start_url: str, mode: AgentMode) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Study automation agent")
     parser.add_argument(
-        "--mode", choices=MODE_MAP.keys(), required=True,
+        "--mode",
+        choices=MODE_MAP.keys(),
+        required=True,
         help="Agent mode for this session: A, B, C1, or C2",
     )
     parser.add_argument(
-        "--url", default="http://localhost:5001/",
+        "--url",
+        default="http://localhost:5001/",
         help="Onboarding portal start URL",
     )
     args = parser.parse_args()
