@@ -29,7 +29,7 @@ class Orchestrator:
         self.policy = make_policy(ctx.mode)
         self.observer = AIGenericObserver(ctx)
         self.automator = AIAutomator(ctx)
-        self._on_flight : set[str] = set()
+        self._on_flight: set[str] = set()
 
     async def on_page_load(self, page) -> None:
 
@@ -40,12 +40,12 @@ class Orchestrator:
             logger.debug(f"Network didn't idle in time, proceeding anyway: {e}")
 
         url = page.url
-        #portal = identify_portal(url)
+        # portal = identify_portal(url)
 
         # if portal is None:
         #    logger.warning(f"Ignoring non-study URL: {url}")
         #    return
-        
+
         if url in self._on_flight:
             logger.debug(f"Already processing {url}, ignoring duplicate load event")
             return
