@@ -20,6 +20,7 @@ class PortalType(Enum):
     MOODLE = 3
     BOSS = 4
 
+
 # Adjust ports here to match how you actually launch the 5 Flask apps.
 PORTAL_URL_MAP: dict[tuple[str | None, int | None], PortalType] = {
     ("localhost", 5001): PortalType.ONBOARDING,

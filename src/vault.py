@@ -41,8 +41,7 @@ class CredentialVault:
         """Load credentials from the JSON file into memory."""
         if not self.storage_path.exists():
             logger.info(
-                f"Vault: {self.storage_path} not found. "
-                "Starting with empty vault."
+                f"Vault: {self.storage_path} not found. " "Starting with empty vault."
             )
             self._store = {}
             return
@@ -67,8 +66,7 @@ class CredentialVault:
 
         except (json.JSONDecodeError, OSError, TypeError, AttributeError) as e:
             logger.error(
-                f"Vault: Error reading credentials from "
-                f"{self.storage_path}: {e}"
+                f"Vault: Error reading credentials from " f"{self.storage_path}: {e}"
             )
 
     def save_to_disk(self) -> None:
@@ -91,14 +89,12 @@ class CredentialVault:
             temp_path.replace(self.storage_path)
 
             logger.info(
-                f"Vault: Updated credentials persisted to "
-                f"{self.storage_path}"
+                f"Vault: Updated credentials persisted to " f"{self.storage_path}"
             )
 
         except OSError as e:
             logger.error(
-                f"Vault: Error writing credentials to "
-                f"{self.storage_path}: {e}"
+                f"Vault: Error writing credentials to " f"{self.storage_path}: {e}"
             )
 
     def save_credentials(
@@ -137,9 +133,7 @@ class CredentialVault:
 
         credential.totp_secret = secret
 
-        logger.info(
-            f"Vault: Captured TOTP secret for domain [{domain}]"
-        )
+        logger.info(f"Vault: Captured TOTP secret for domain [{domain}]")
 
         self.save_to_disk()
 
@@ -152,8 +146,4 @@ class CredentialVault:
         """Return True if a complete credential exists for the domain."""
         credential = self.get_credential(url)
 
-        return bool(
-            credential
-            and credential.username
-            and credential.password
-        )
+        return bool(credential and credential.username and credential.password)

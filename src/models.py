@@ -3,6 +3,7 @@ src/models.py
 
 Defines internal data structures and agent modes.
 """
+
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional

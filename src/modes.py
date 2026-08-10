@@ -97,6 +97,7 @@ class AutonomousSlowPolicy(ModePolicy):
     async def before_action(self, page) -> None:
         await page.evaluate(_SET_OVERLAY_JS, True)
         from ui import watch_for_escape  # local import avoids a cycle
+
         self._escape_event = await watch_for_escape(page)
 
     async def after_action(self, page) -> None:

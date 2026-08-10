@@ -343,7 +343,7 @@ class AIAutomator:
         """Checks if the current page is a login form using LLM classification."""
         try:
             system_prompt = get_system_prompt(SystemPrompt.CHECK_LOGIN_SYSTEM_PROMPT)
-            #dom = await get_page_dom(page)
+            # dom = await get_page_dom(page)
             dom = await page.content()
             prompt = get_prompt(Prompt.CHECK_LOGIN_PROMPT, dom)
 

@@ -31,7 +31,7 @@ class Orchestrator:
         self.automator = AIAutomator(ctx)
 
     async def on_page_load(self, page) -> None:
-        
+
         # Wait for the page to completely finish loading and network to settle
         try:
             await page.wait_for_load_state("networkidle", timeout=5000)
@@ -41,7 +41,7 @@ class Orchestrator:
         url = page.url
         portal = identify_portal(url)
 
-        #if portal is None:
+        # if portal is None:
         #    logger.warning(f"Ignoring non-study URL: {url}")
         #    return
 
