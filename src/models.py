@@ -1,7 +1,9 @@
 """
-src/models.py
+Defines fundamental data structures and enumerations for the study agent. 
 
-Defines internal data structures and agent modes.
+Contains the AgentMode enum representing the four experimental conditions 
+(Manual, Assisted, Autonomous Slow, Autonomous Fast) and the Credential 
+dataclass used to standardize in-memory authentication data.
 """
 
 from dataclasses import dataclass

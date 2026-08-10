@@ -1,12 +1,10 @@
 """
-src/ui.py
+Provides custom, in-page UI overlays for participant interaction. 
 
-Tiny in-page UI helpers.
-
-These inject a small overlay directly into the page via JS, rather than
-using native browser dialogs (window.confirm), because Playwright's
-automation session doesn't let a real human interact with native dialogs
-reliably, and a styled overlay reads better for non-IT study participants.
+Injects JavaScript-based dialogs and event listeners directly into the 
+DOM via Playwright. This bypasses the limitations of native browser dialogs 
+in automated sessions, providing a user-friendly interface for asking 
+permission (Mode B) and listening for manual Escape interruptions (Mode C1).
 """
 
 from __future__ import annotations

@@ -1,17 +1,11 @@
 """
-src/modes.py
+Defines the ModePolicy strategy classes for the four study conditions 
+(Manual, Assisted, Autonomous Slow, Autonomous Fast). 
 
-One AgentMode enum + one ModePolicy strategy class per mode.
-
-Deliberately NOT four separate program files. The four study conditions
-differ only in whether/how the agent is allowed to ACT - they all share
-the exact same onboarding-observation logic and the exact same login
-automation logic. Splitting into separate programs would duplicate that
-logic four times and risk the four modes silently drifting apart, which
-is exactly what you don't want in a controlled study.
-
-Participants (including non-IT people) never choose the mode themselves;
-it is fixed for the session via a CLI flag in main.py.
+Governs whether and how the automation agent is allowed to act on a page 
+(e.g., asking for user permission or rendering visual overlays). This 
+strategy pattern prevents the duplication of core observation and login 
+logic across different experimental conditions.
 """
 
 from __future__ import annotations

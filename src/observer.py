@@ -1,8 +1,9 @@
 """
-src/observer.py
+Contains observer implementations for capturing credentials and 2FA secrets. 
 
-Defines the abstract BaseObserver, alongside the Deterministic OnboardingObserver
-and the powerful AIGenericObserver.
+Includes the abstract BaseObserver, a deterministic OnboardingObserver for 
+controlled study portals, and an AIGenericObserver that utilizes an LLM to 
+dynamically analyze DOM structures and attach network listeners for post requests
 """
 
 import json

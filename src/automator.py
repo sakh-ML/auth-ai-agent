@@ -1,9 +1,10 @@
 """
-src/automator.py
+Provides the AIAutomator class for fully AI-driven browser automation. 
 
-Fully AI-driven browser automator. Performs DOM classification (login vs 2FA)
-and handles form interactions using LLM function tools, dynamic TOTP generation,
-and secure local credential replacement.
+Responsible for interacting with the OpenAI API to perform DOM classification 
+(detecting login vs. 2FA pages) and executing form interactions via LLM 
+function tools. Ensures security by intercepting LLM tool calls to substitute 
+placeholders with real credentials and dynamically generated TOTP codes locally.
 """
 
 from __future__ import annotations

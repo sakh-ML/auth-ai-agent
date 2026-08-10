@@ -1,11 +1,9 @@
 """
-src/portals.py
+Manages study portal identification and whitelisting. 
 
-Everything specific to "which of our 5 known Flask apps is this".
-
-Replaces the old is_valid_url()/is_login_page() LLM-classifier approach.
-We control every URL in this study, so we whitelist by (host, port)
-instead of asking an LLM to guess generically.
+Maps specific localhost ports to known Flask applications (Onboarding, Mail, 
+LSF, Moodle, Boss) to strictly control which domains the agent is allowed 
+to process during the study.
 """
 
 from __future__ import annotations

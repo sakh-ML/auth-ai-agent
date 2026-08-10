@@ -1,3 +1,10 @@
+"""
+Utility for extracting and sanitizing the HTML DOM for LLM processing. 
+
+Provides functionality to clone and clean the active webpage's DOM by 
+stripping out token-heavy, non-interactive noise.
+"""
+
 async def get_page_dom(page) -> str:
     """
     Extracts a cleaned, token-efficient version of the DOM.

@@ -1,13 +1,9 @@
 """
-src/orchestrator.py
+Serves as the central page-load handler and workflow controller. 
 
-The single page-load handler. Replaces on_page_load_openai from your
-old main.py.
-
-Flow per page load:
-  1. identify_portal(url) -> whitelist check, ignore anything not ours
-  2. onboarding portal      -> observe/learn (always, every mode)
-  3. mail/lsf/moodle/boss   -> maybe log in (mode-gated via ModePolicy)
+Orchestrates the lifecycle of a page visit by evaluating the URL, delegating 
+DOM classification to the Automator, executing observation for credentials, 
+and strictly enforcing the active ModePolicy before automating logins or 2FA.
 """
 
 from __future__ import annotations

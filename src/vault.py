@@ -1,8 +1,9 @@
 """
-src/vault.py
+Provides persistent, multi-account credential storage. 
 
-Persistent, multi-account credential storage backed by a JSON file.
-Automatically loads on startup and saves updates when observations occur.
+Backed by a local JSON file, the CredentialVault automatically handles 
+saving, retrieving, and updating usernames, passwords, and TOTP secrets 
+for specific domains during observation and automation.
 """
 
 import json

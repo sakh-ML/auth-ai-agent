@@ -1,3 +1,11 @@
+"""
+Configures the AIClient for interacting with the OpenAI-compatible API. 
+
+Defines the executable browser interaction tools (write_in_field, click_element) 
+provided to the LLM, and handles the formatting, parameterization, and 
+execution of remote API requests.
+"""
+
 from openai import OpenAI
 import os
 

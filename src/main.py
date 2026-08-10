@@ -1,18 +1,10 @@
 """
-src/main.py
+Entry point for the automation study session. 
 
-Entry point for a study session. Replaces the old on_page_load_openai
-based main.py.
-
-Usage (from repo root, matching your existing setup.sh/uv workflow):
-    python src/main.py --mode A
-    python src/main.py --mode B
-    python src/main.py --mode C1
-    python src/main.py --mode C2 --url http://localhost:5001/
-
-The mode is fixed for the whole session by YOU (the experimenter) via
-the CLI flag - participants never choose it themselves. This is the
-only place AgentMode is picked; every other component just reacts to it.
+Initializes the Playwright browser, parses CLI arguments to set a fixed 
+AgentMode for the session, and attaches the global Orchestrator to handle 
+page loads. The agent mode is strictly controlled via the CLI to ensure 
+consistency during controlled experiments.
 """
 
 from __future__ import annotations
