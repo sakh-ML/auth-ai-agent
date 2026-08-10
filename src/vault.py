@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 from models import Credential
 
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 

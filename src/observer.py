@@ -13,6 +13,7 @@ from context import AgentContext
 from clean_dom import get_page_dom
 from client import AIClient
 
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # ==========================================
@@ -121,7 +122,7 @@ class AIGenericObserver(BaseObserver):
                         self._attach_network_listener(page, user_attr, pass_attr)
                         return
 
-            logger.debug("AIGenericObserver: AI did not detect a login form.")
+            logger.info("AIGenericObserver: AI did not detect a login form.")
 
         except Exception as e:
             logger.error(f"AIGenericObserver failed: {e}")
@@ -215,4 +216,4 @@ class OnboardingObserver(BaseObserver):
             if secret:
                 self.ctx.vault.save_totp_secret(page.url, secret.strip())
         except Exception as e:
-            logger.debug(f"Deterministic TOTP capture failed: {e}")
+            logger.warning(f"Deterministic TOTP capture failed: {e}")

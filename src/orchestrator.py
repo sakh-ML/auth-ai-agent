@@ -20,6 +20,7 @@ from automator import AIAutomator
 from modes import make_policy
 from ui import ask_user_yes_no
 
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 

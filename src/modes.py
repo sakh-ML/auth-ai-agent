@@ -21,6 +21,7 @@ import logging
 
 from context import AgentMode
 
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 _SET_OVERLAY_JS = """

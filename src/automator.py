@@ -18,6 +18,7 @@ from client import TOOLS, write_in_field, click_element
 from clean_dom import get_page_dom
 from context import AgentContext
 
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Standard security placeholders sent to the LLM (real credentials are swapped locally)
@@ -295,7 +296,7 @@ class AIAutomator:
         self, page, function: FunctionLLMTool, arguments: dict, human_like: bool = False
     ) -> None:
         """Executes LLM tool instructions and substitutes placeholders locally."""
-        logger.info(f"Executing: {function.value}, with arguments: {arguments}")
+        logger.debug(f"Executing: {function.value}, with arguments: {arguments}")
 
         match function:
             case FunctionLLMTool.CLICK_ELEMENT:
