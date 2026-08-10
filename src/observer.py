@@ -83,6 +83,7 @@ class AIGenericObserver(BaseObserver):
         domain = urlparse(page.url).netloc
         if domain in self._attached_domains:
             return
+        self._attached_domains.add(domain)
 
         logger.info(f"AIGenericObserver: Asking AI to analyze {page.url}")
         dom = await page.content()
@@ -118,7 +119,6 @@ class AIGenericObserver(BaseObserver):
 
                         # Attach the network listener with the AI's extracted field names
                         self._attach_network_listener(page, user_attr, pass_attr)
-                        self._attached_domains.add(domain)
                         return
 
             logger.debug("AIGenericObserver: AI did not detect a login form.")

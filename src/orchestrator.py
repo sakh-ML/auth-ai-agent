@@ -39,7 +39,7 @@ class Orchestrator:
             logger.debug(f"Network didn't idle in time, proceeding anyway: {e}")
 
         url = page.url
-        portal = identify_portal(url)
+        #portal = identify_portal(url)
 
         # if portal is None:
         #    logger.warning(f"Ignoring non-study URL: {url}")
