@@ -14,7 +14,7 @@ from enum import Enum
 from typing import Optional
 import pyotp
 
-from client import AIClient, TOOLS, write_in_field, click_element
+from client import TOOLS, write_in_field, click_element
 from clean_dom import get_page_dom
 from context import AgentContext
 
@@ -348,8 +348,7 @@ class AIAutomator:
             prompt = get_prompt(Prompt.CHECK_LOGIN_PROMPT, dom)
 
             input_data = [{"role": "user", "content": f"{prompt}"}]
-            ai_client = AIClient()
-            response = ai_client.ask_client(
+            response = self.ctx.ai_client.ask_client(
                 input=input_data, instructions=system_prompt
             )
 
@@ -366,8 +365,7 @@ class AIAutomator:
             prompt = get_prompt(Prompt.CHECK_2FA_PROMPT, dom)
 
             input_data = [{"role": "user", "content": f"{prompt}"}]
-            ai_client = AIClient()
-            response = ai_client.ask_client(
+            response = self.ctx.ai_client.ask_client(
                 input=input_data, instructions=system_prompt
             )
 
@@ -392,8 +390,7 @@ class AIAutomator:
 
             input_list = [{"role": "user", "content": f"{prompt}"}]
 
-            ai_client = AIClient()
-            response = ai_client.ask_client(
+            response = self.ctx.ai_client.ask_client(
                 input=input_list, instructions=system_prompt, tools=TOOLS
             )
 
@@ -447,8 +444,7 @@ class AIAutomator:
 
             input_list = [{"role": "user", "content": f"{prompt}"}]
 
-            ai_client = AIClient()
-            response = ai_client.ask_client(
+            response = self.ctx.ai_client.ask_client(
                 input=input_list, instructions=system_prompt, tools=TOOLS
             )
 

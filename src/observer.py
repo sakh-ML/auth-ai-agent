@@ -8,8 +8,7 @@ and the powerful AIGenericObserver.
 import json
 import logging
 from abc import ABC, abstractmethod
-from urllib.parse import parse_qsl
-
+from urllib.parse import parse_qsl, urlparse
 from context import AgentContext
 from clean_dom import get_page_dom
 from client import AIClient
@@ -29,7 +28,7 @@ class BaseObserver(ABC):
 
     def __init__(self, ctx: AgentContext):
         self.ctx = ctx
-        self._attached_pages = set()
+        self._attached_domains: set[str] = set()
 
     @abstractmethod
     async def observe(self, page) -> None:
@@ -81,12 +80,12 @@ class AIGenericObserver(BaseObserver):
     """
 
     async def observe(self, page) -> None:
-        page_id = id(page)
-        if page_id in self._attached_pages:
+        domain = urlparse(page.url).netloc
+        if domain in self._attached_domains:
             return
 
         logger.info(f"AIGenericObserver: Asking AI to analyze {page.url}")
-        dom = await get_page_dom(page)
+        dom = await page.content()
 
         instructions = (
             "You are a web parsing agent. Your job is to look at the DOM and determine "
@@ -96,8 +95,7 @@ class AIGenericObserver(BaseObserver):
         )
 
         try:
-            client = AIClient()
-            response = client.ask_client(
+            response = self.ctx.ai_client.ask_client(
                 input=[
                     {"role": "user", "content": f"---- DOM ----\n{dom}\n---- END ----"}
                 ],
@@ -120,7 +118,7 @@ class AIGenericObserver(BaseObserver):
 
                         # Attach the network listener with the AI's extracted field names
                         self._attach_network_listener(page, user_attr, pass_attr)
-                        self._attached_pages.add(page_id)
+                        self._attached_domains.add(domain)
                         return
 
             logger.debug("AIGenericObserver: AI did not detect a login form.")
@@ -175,14 +173,14 @@ class OnboardingObserver(BaseObserver):
 
     async def observe(self, page) -> None:
         url = page.url
-        page_id = id(page)
+        domain = urlparse(url).netloc
 
-        if page_id in self._attached_pages:
+        if domain in self._attached_domains:
             return
 
         if "/set-password" in url or url.rstrip("/").endswith(":5001"):
             self._attach_password_capture(page)
-            self._attached_pages.add(page_id)
+            self._attached_domains.add(domain)
 
         if "/setup-2fa" in url:
             await self._capture_totp_secret(page)

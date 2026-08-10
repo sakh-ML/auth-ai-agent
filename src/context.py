@@ -10,6 +10,7 @@ Nothing else should hold its own copy of credentials or state.
 
 from models import AgentMode
 from vault import CredentialVault
+from client import AIClient
 
 
 class AgentContext:
@@ -17,3 +18,4 @@ class AgentContext:
     def __init__(self, mode: AgentMode):
         self.mode = mode
         self.vault = CredentialVault()
+        self.ai_client = AIClient()

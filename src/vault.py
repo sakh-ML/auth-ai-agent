@@ -156,5 +156,4 @@ class CredentialVault:
             credential
             and credential.username
             and credential.password
-            and credential.totp_secret
         )
