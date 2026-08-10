@@ -289,7 +289,7 @@ class AIAutomator:
                 return totp_code
 
             case _:
-                return placeholder
+                return None
 
     async def _execute_function_call(
         self, page, function: FunctionLLMTool, arguments: dict, human_like: bool = False
