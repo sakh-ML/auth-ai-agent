@@ -55,14 +55,21 @@ async def run(start_url: str, mode: AgentMode) -> None:
         logger.info(f"Opening start URL: {start_url}")
         await page.goto(start_url)
 
-        # TODO :- listen for exiting page/browser
+        # Listen for exiting page/browser without timing out
         try:
-            while True:
-                await asyncio.sleep(1)
+            logger.info(
+                "Waiting indefinitely for the user to close the page/browser..."
+            )
+
+            # timeout=0 tells Playwright to NEVER time out.
+            await page.wait_for_event("close", timeout=0)
+
         except KeyboardInterrupt:
-            logger.info("Exiting...")
+            logger.info("Exiting via KeyboardInterrupt...")
         finally:
-            await browser.close()
+            logger.info("Page closed. Cleaning up...")
+            if browser.is_connected():
+                await browser.close()
 
 
 def main() -> None:
