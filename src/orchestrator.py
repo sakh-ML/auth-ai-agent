@@ -39,7 +39,7 @@ class Orchestrator:
         try:
             await page.wait_for_load_state("networkidle", timeout=5000)
         except Exception as e:
-            logger.debug(f"Network didn't idle in time, proceeding anyway: {e}")
+            logger.warning(f"Network didn't idle in time, proceeding anyway: {e}")
 
         async with self._lock:
             url = page.url
@@ -50,7 +50,7 @@ class Orchestrator:
             #    return
 
             if url in self._on_flight:
-                logger.debug(f"Already processing {url}, ignoring duplicate load event")
+                logger.info(f"Already processing {url}, ignoring duplicate load event")
                 return
 
             self._on_flight.add(url)
