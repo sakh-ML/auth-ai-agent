@@ -23,7 +23,7 @@ def _next_available_log_file(log_dir: Path, base_name: str) -> Path:
     return candidate_log_file
 
 
-def setup_logging(participant_id: int, mode: str, level: int = logging.DEBUG) -> None:
+def setup_logging(participant_id: int, mode: str, level: int = logging.INFO) -> None:
     """Configures the root logger once at application startup."""
     log_dir = Path(f"logs/participant_{participant_id}")
     log_dir.mkdir(parents=True, exist_ok=True)
