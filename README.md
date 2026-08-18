@@ -25,11 +25,15 @@ SAIA_API_KEY="your_saia_api_key_here"
 
 ## Usage
 
-The application now strictly requires a `--mode` flag to define the agent's behavior for the session. Participants never choose this; it is set by the experimenter.
+The application now strictly requires a `--participant_id` and a `--mode` flag to define, respectively, which participant the session belongs to and the agent's behavior for that session. Participants never choose these; they are set by the experimenter.
 
 ```bash
-uv run python src/main.py --mode <MODE> [--url <START_URL>]
+uv run python src/main.py --participant_id <ID> --mode <MODE> [--url <START_URL>]
 ```
+
+* `--participant_id`: Integer ID for the participant running the session. Used to name and separate that participant's log files (see [Logging](#logging) below).
+* `--mode`: One of `A`, `B`, `C1`, `C2` (see below).
+* `--url`: Optional. Defaults to `http://localhost:5001/`.
 
 ### Available Modes
 * `A` : **Manual** - Agent observes and learns credentials but never automates actions.
@@ -38,12 +42,25 @@ uv run python src/main.py --mode <MODE> [--url <START_URL>]
 * `C2`: **Autonomous Fast** - Fully autonomous, instant execution with no overlays.
 
 ### Examples
-Run the agent in Assisted mode on the default onboarding portal (http://localhost:5001/):
+Run the agent for participant 7 in Assisted mode on the default onboarding portal (http://localhost:5001/):
 ```bash
-uv run python src/main.py --mode B
+uv run python src/main.py --participant_id 7 --mode B
 ```
 
-Run the agent in Autonomous Fast mode with a custom starting URL:
+Run the agent for participant 12 in Autonomous Fast mode with a custom starting URL:
 ```bash
-uv run python src/main.py --mode C2 --url http://127.0.0.1:5002/
+uv run python src/main.py --participant_id 12 --mode C2 --url http://127.0.0.1:5002/
+```
+
+## Logging
+
+Each session's logs are stored separately by participant and mode. A new log
+file is created for every run, so existing logs are never overwritten or
+appended to. Logs are written both to the session log file and to the console,
+with millisecond-precision timestamps.
+
+```
+logs/participant_<ID>/participant_<ID>_<MODE>.log
+logs/participant_<ID>/participant_<ID>_<MODE>_2.log   # second run, same participant + mode
+logs/participant_<ID>/participant_<ID>_<MODE>_3.log   # third run, and so on
 ```

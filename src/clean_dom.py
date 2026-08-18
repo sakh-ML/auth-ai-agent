@@ -1,9 +1,10 @@
 """
-Utility for extracting and sanitizing the HTML DOM for LLM processing. 
+Utility for extracting and sanitizing the HTML DOM for LLM processing.
 
-Provides functionality to clone and clean the active webpage's DOM by 
+Provides functionality to clone and clean the active webpage's DOM by
 stripping out token-heavy, non-interactive noise.
 """
+
 
 async def get_page_dom(page) -> str:
     """
@@ -18,7 +19,7 @@ async def get_page_dom(page) -> str:
 
         // 2. Define tags that provide zero value to an AI agent trying to log in
         const tagsToRemove = [
-            'script', 'style', 'svg', 'canvas', 'noscript', 
+            'script', 'style', 'svg', 'canvas', 'noscript',
             'iframe', 'meta', 'link', 'path', 'symbol', 'defs'
         ];
 
@@ -33,7 +34,7 @@ async def get_page_dom(page) -> str:
         allElements.forEach(el => {
             // Remove inline styles (massive token waste)
             el.removeAttribute('style');
-            
+
             // Remove Base64 Image data but keep the image tag so AI knows it's there
             if (el.tagName.toLowerCase() === 'img') {
                 const src = el.getAttribute('src');

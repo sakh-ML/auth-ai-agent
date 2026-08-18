@@ -7,6 +7,8 @@ execution of remote API requests.
 """
 
 from openai import OpenAI
+from openai import AsyncOpenAI
+
 import os
 
 # Load dotenv needed if we have a .env file stored the variables there.
@@ -80,12 +82,12 @@ class AIClient:
         if not api_key:
             raise RuntimeError("AI API KEY IS NOT SET")
 
-        self.client = OpenAI(
+        self.client = AsyncOpenAI(
             api_key=api_key, base_url="https://chat-ai.academiccloud.de/v1"
         )
         self.model = "meta-llama-3.1-8b-instruct"
 
-    def ask_client(self, input, instructions, tools=None):
+    async def ask_client(self, input, instructions, tools=None):
         params = {
             "model": self.model,
             "instructions": instructions,
@@ -96,5 +98,5 @@ class AIClient:
         if tools is not None:
             params["tools"] = tools
 
-        response = self.client.responses.create(**params)
+        response = await self.client.responses.create(**params)
         return response

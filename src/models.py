@@ -1,14 +1,14 @@
 """
-Defines fundamental data structures and enumerations for the study agent. 
+Defines fundamental data structures and enumerations for the study agent.
 
-Contains the AgentMode enum representing the four experimental conditions 
-(Manual, Assisted, Autonomous Slow, Autonomous Fast) and the Credential 
-dataclass used to standardize in-memory authentication data.
+Contains the AgentMode enum representing the four experimental conditions
+(Manual, Assisted, Autonomous Slow, Autonomous Fast) and the Credential
+dataclass used to standardize in-memory authentication data (username,
+password, and TOTP secret).
 """
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class AgentMode(Enum):
@@ -20,9 +20,9 @@ class AgentMode(Enum):
 
 @dataclass
 class Credential:
-    username: Optional[str] = None
-    password: Optional[str] = None
-    totp_secret: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
+    totp_secret: str | None = None
 
     def __repr__(self) -> str:
         pwd_status = "SET" if self.password else "EMPTY"

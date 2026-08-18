@@ -1,8 +1,8 @@
 """
-Manages study portal identification and whitelisting. 
+Manages study portal identification and whitelisting.
 
-Maps specific localhost ports to known Flask applications (Onboarding, Mail, 
-LSF, Moodle, Boss) to strictly control which domains the agent is allowed 
+Maps specific localhost ports to known Flask applications (Onboarding, Mail,
+LSF, Moodle, Boss) to strictly control which domains the agent is allowed
 to process during the study.
 """
 
@@ -31,6 +31,11 @@ PORTAL_URL_MAP: dict[tuple[str | None, int | None], PortalType] = {
     ("127.0.0.1", 5003): PortalType.LSF,
     ("127.0.0.1", 5004): PortalType.MOODLE,
     ("127.0.0.1", 5005): PortalType.BOSS,
+    ("31.70.108.229", 5001): PortalType.ONBOARDING,
+    ("31.70.108.229", 5002): PortalType.MAIL,
+    ("31.70.108.229", 5003): PortalType.LSF,
+    ("31.70.108.229", 5004): PortalType.MOODLE,
+    ("31.70.108.229", 5005): PortalType.BOSS,
 }
 
 

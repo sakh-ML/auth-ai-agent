@@ -1,25 +1,21 @@
 """
-Contains observer implementations for capturing credentials and 2FA secrets. 
+Contains observer implementations for capturing credentials and 2FA secrets.
 
-Includes the abstract BaseObserver, a deterministic OnboardingObserver for 
-controlled study portals, and an AIGenericObserver that utilizes an LLM to 
-dynamically analyze DOM structures and attach network listeners for post requests
+Includes the abstract BaseObserver and the AIGenericObserver, which utilizes
+an LLM to dynamically analyze DOM structures. It locates specific authentication
+elements (like input fields and displayed TOTP secrets) and attaches network
+listeners to intercept POST requests, automatically saving credentials to the vault.
 """
 
 import json
 import logging
 from abc import ABC, abstractmethod
-from urllib.parse import parse_qsl, urlparse
+from urllib.parse import parse_qsl
 from context import AgentContext
 from clean_dom import get_page_dom
-from client import AIClient
+from prompts import get_prompt, get_system_prompt, Prompt, SystemPrompt
 
-logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
-
-# ==========================================
-# 1. ABSTRACT BASE CLASS
-# ==========================================
 
 
 class BaseObserver(ABC):
@@ -30,7 +26,7 @@ class BaseObserver(ABC):
 
     def __init__(self, ctx: AgentContext):
         self.ctx = ctx
-        self._attached_domains: set[str] = set()
+        self._attached_urls: set[str] = set()
 
     @abstractmethod
     async def observe(self, page) -> None:
@@ -41,34 +37,46 @@ class BaseObserver(ABC):
         pass
 
 
-# ==========================================
-# 2. AI GENERIC OBSERVER (Dynamic / Wild Web)
-# ==========================================
-
-# We define a specific tool just for the AI observer to use.
-# It tells the AI to report back the exact form field 'name' attributes.
+# We define a highly flexible tool to let the AI report EXACTLY what it sees,
+# whether it's just a username, just a password, a 2FA code, or a combination or
+# a also a css selector.
 OBSERVER_AI_TOOLS = [
     {
         "type": "function",
-        "name": "report_login_fields",
-        "description": "Call this if a login or registration form is found to report the input 'name' attributes.",
+        "name": "report_authentication_elements",
+        "description": (
+            "Report ALL authentication elements found in the DOM. "
+            "This includes BOTH input fields (like username, password, or verification code inputs) "
+            "AND displayed persistent TOTP secrets (like a manual entry key next to a QR code)."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
-                "is_login_page": {
-                    "type": "boolean",
-                    "description": "True if a login or registration form is on the page.",
+                "input_fields": {
+                    "type": "array",
+                    "description": "List of input fields actually found in the DOM that the user types into.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name_attr": {
+                                "type": "string",
+                                "description": "The exact 'name' attribute of the input field.",
+                            },
+                            "field_purpose": {
+                                "type": "string",
+                                "enum": ["username", "password", "one_time_token"],
+                                "description": "What the field is used for. Use 'one_time_token' for a single-use code.",
+                            },
+                        },
+                        "required": ["name_attr", "field_purpose"],
+                    },
                 },
-                "username_name_attr": {
+                "displayed_secret_css_selector": {
                     "type": "string",
-                    "description": "The exact 'name' attribute of the username/email input field.",
-                },
-                "password_name_attr": {
-                    "type": "string",
-                    "description": "The exact 'name' attribute of the password input field.",
+                    "description": "The exact CSS selector (e.g., '.secret-box') of the DOM element whose text content IS a persistent, reusable 2FA secret (like a setup key). Return an empty string if not found.",
                 },
             },
-            "required": ["is_login_page", "username_name_attr", "password_name_attr"],
+            "required": ["input_fields", "displayed_secret_css_selector"],
         },
     }
 ]
@@ -76,60 +84,122 @@ OBSERVER_AI_TOOLS = [
 
 class AIGenericObserver(BaseObserver):
     """
-    Uses OpenAI to analyze unknown pages. If it detects a login form,
-    it learns what field names to look for, and attaches a network listener
-    to capture the POST request containing the credentials.
+    Uses an LLM to analyze authentication pages dynamically, identify the
+    authentication input fields present in the DOM, and attach a flexible
+    network listener for matching POST fields.
     """
 
     async def observe(self, page) -> None:
-        domain = urlparse(page.url).netloc
-        if domain in self._attached_domains:
+        if page.url in self._attached_urls:
             return
-        self._attached_domains.add(domain)
+        self._attached_urls.add(page.url)
 
         logger.info(f"AIGenericObserver: Asking AI to analyze {page.url}")
-        dom = await page.content()
+        dom = await get_page_dom(page)
 
-        instructions = (
-            "You are a web parsing agent. Your job is to look at the DOM and determine "
-            "if there is a login or registration form. If there is, you MUST use the "
-            "`report_login_fields` tool to output the 'name' attributes of the username "
-            "and password fields. Do not guess, only extract what is in the DOM."
-        )
+        observer_system_prompt = get_system_prompt(SystemPrompt.OBSERVER_SYSTEM_PROMPT)
+        observer_prompt = get_prompt(Prompt.OBSERVER_PROMPT, dom)
 
         try:
-            response = self.ctx.ai_client.ask_client(
-                input=[
-                    {"role": "user", "content": f"---- DOM ----\n{dom}\n---- END ----"}
-                ],
-                instructions=instructions,
+            response = await self.ctx.ai_client.ask_client(
+                input=[{"role": "user", "content": observer_prompt}],
+                instructions=observer_system_prompt,
                 tools=OBSERVER_AI_TOOLS,
             )
 
-            # Check if the AI called our reporting tool
+            detected_anything = False
+
             for item in response.output:
-                if item.type == "function_call" and item.name == "report_login_fields":
+                if (
+                    item.type != "function_call"
+                    or item.name != "report_authentication_elements"
+                ):
+                    continue
+
+                try:
                     args = json.loads(item.arguments)
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.error(
+                        f"AIGenericObserver: failed to decode tool arguments: {e}"
+                    )
+                    continue
 
-                    if args.get("is_login_page"):
-                        user_attr = args.get("username_name_attr")
-                        pass_attr = args.get("password_name_attr")
+                if not isinstance(args, dict):
+                    continue
 
-                        logger.info(
-                            f"AI detected login form. Expected POST fields: user='{user_attr}', pass='{pass_attr}'"
+                # Handle the css selectors that picked from the agent
+                css_selector = args.get("displayed_secret_css_selector", "")
+                if (
+                    css_selector
+                    and isinstance(css_selector, str)
+                    and css_selector.strip()
+                ):
+                    logger.info(
+                        f"AI detected displayed secret at selector: {css_selector}"
+                    )
+                    try:
+                        locator = page.locator(css_selector)
+                        count = await locator.count()
+
+                        if count > 0:
+                            secret_text = await locator.first.text_content()
+                            if secret_text:
+                                self.ctx.vault.save_totp_secret(
+                                    page.url, secret_text.strip()
+                                )
+                                logger.info(
+                                    f"Successfully saved displayed TOTP secret via AI generic observer for {page.url}"
+                                )
+                                detected_anything = True
+                        else:
+                            logger.warning(
+                                f"Selector '{css_selector}' returned 0 matching elements in the DOM."
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to read displayed secret from DOM: {e}",
+                            exc_info=True,
                         )
 
-                        # Attach the network listener with the AI's extracted field names
-                        self._attach_network_listener(page, user_attr, pass_attr)
-                        return
+                # Handle input fields (network listener)
+                fields = args.get("input_fields", [])
+                if isinstance(fields, str):
+                    try:
+                        fields = json.loads(fields)
+                    except (json.JSONDecodeError, TypeError):
+                        import ast
 
-            logger.info("AIGenericObserver: AI did not detect a login form.")
+                        try:
+                            fields = ast.literal_eval(fields)
+                        except (ValueError, SyntaxError, TypeError):
+                            continue
+
+                field_mapping = {}
+                for field in fields:
+                    if not isinstance(field, dict):
+                        continue
+                    name_attr = field.get("name_attr")
+                    purpose = field.get("field_purpose")
+                    if name_attr and purpose:
+                        field_mapping[name_attr] = purpose
+
+                if field_mapping:
+                    logger.info(
+                        f"AI detected auth fields. Expected POST fields mapping: {field_mapping}"
+                    )
+                    self._attach_network_listener(page, field_mapping)
+                    detected_anything = True
+
+            if not detected_anything:
+                logger.info(
+                    "AIGenericObserver: AI did not detect any authentication fields or displayed secrets."
+                )
 
         except Exception as e:
-            logger.error(f"AIGenericObserver failed: {e}")
+            logger.error(f"AIGenericObserver failed: {e}", exc_info=True)
 
-    def _attach_network_listener(self, page, user_field: str, pass_field: str) -> None:
-        """Listens for the exact POST request expected by the AI."""
+    def _attach_network_listener(self, page, field_mapping: dict) -> None:
+        """Listens for POST requests and flexibly captures any mapped fields it finds."""
 
         def handle_request(request):
             if request.method != "POST":
@@ -140,81 +210,52 @@ class AIGenericObserver(BaseObserver):
                 return
 
             try:
-                # Parse the outgoing form data
-                form_data = dict(parse_qsl(post_data))
+                # Try parsing as JSON first
+                try:
+                    form_data = json.loads(post_data)
+                except json.JSONDecodeError:
+                    # Fallback to standard URL-encoded form data
+                    form_data = dict(parse_qsl(post_data))
 
-                # Check if the AI's predicted fields are in the submission
-                if user_field in form_data and pass_field in form_data:
-                    username = form_data[user_field]
-                    password = form_data[pass_field]
+                captured = {}
 
-                    if username and password:
-                        logger.info(
-                            f"AIGenericObserver: Captured credentials via POST interception!"
-                        )
-                        # Save securely to vault
-                        self.ctx.vault.save_credentials(request.url, username, password)
+                # Check if ANY of the AI's predicted fields are in the submission
+                for name_attr, purpose in field_mapping.items():
+                    if name_attr in form_data and form_data[name_attr]:
+                        captured[purpose] = form_data[name_attr]
+
+                if "one_time_token" in captured:
+                    # Deliberately not persisted: a one-time token typed
+                    # once alongside username/password is NOT a recurring
+                    # TOTP secret, so we must never save it as one.
+                    logger.info(
+                        "AIGenericObserver: observed a one-time token field "
+                        "- intentionally not saving it as totp_secret."
+                    )
+
+                if (
+                    captured.get("username")
+                    or captured.get("password")
+                    or captured.get("totp_secret")
+                ):
+                    logger.info(
+                        f"AIGenericObserver: Captured credentials via POST interception: "
+                        f"{[k for k in captured if k != 'one_time_token']}"
+                    )
+
+                    # Update vault securely and flexibly based on what was caught.
+                    # Note: one_time_token is intentionally never passed here.
+                    self.ctx.vault.update_credential(
+                        request.url,
+                        username=captured.get("username"),
+                        password=captured.get("password"),
+                        totp_secret=captured.get("totp_secret"),
+                    )
             except Exception as e:
                 logger.error(f"Error parsing request payload: {e}")
 
         # Bind the event listener to Playwright
         page.on("request", handle_request)
-        logger.info("AIGenericObserver: Network listener attached successfully.")
-
-
-# ==========================================
-# 3. DETERMINISTIC OBSERVER (Controlled Study)
-# ==========================================
-
-
-class OnboardingObserver(BaseObserver):
-    """
-    Deterministic observer for the controlled study portals (e.g., localhost:5001).
-    Since we know the exact DOM, we don't need the LLM here.
-    """
-
-    async def observe(self, page) -> None:
-        url = page.url
-        domain = urlparse(url).netloc
-
-        if domain in self._attached_domains:
-            return
-
-        if "/set-password" in url or url.rstrip("/").endswith(":5001"):
-            self._attach_password_capture(page)
-            self._attached_domains.add(domain)
-
-        if "/setup-2fa" in url:
-            await self._capture_totp_secret(page)
-
-    def _attach_password_capture(self, page) -> None:
-        """Deterministic POST interceptor based on known API schema."""
-
-        def _handle_request(request):
-            if request.method != "POST" or "/set-password" not in request.url:
-                return
-
-            post_data = request.post_data
-            if not post_data:
-                return
-
-            form = dict(parse_qsl(post_data))
-            email = form.get("email")
-            password = form.get("new_password")
-
-            if email and password:
-                self.ctx.vault.save_credentials(request.url, email, password)
-
-        page.on("request", _handle_request)
-        logger.info("OnboardingObserver: Deterministic listener attached.")
-
-    async def _capture_totp_secret(self, page) -> None:
-        """Deterministic TOTP reader based on known CSS selector."""
-        selector = "#totp-secret"  # (From portals.py ONBOARDING_SELECTORS)
-        try:
-            await page.wait_for_selector(selector, timeout=5000)
-            secret = await page.locator(selector).text_content()
-            if secret:
-                self.ctx.vault.save_totp_secret(page.url, secret.strip())
-        except Exception as e:
-            logger.warning(f"Deterministic TOTP capture failed: {e}")
+        logger.info(
+            "AIGenericObserver: Dynamic network listener attached successfully."
+        )

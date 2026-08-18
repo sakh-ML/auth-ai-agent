@@ -1,2 +1,2 @@
-black src/
+black src/*.py
 

@@ -1,10 +1,10 @@
 """
-Entry point for the automation study session. 
+Entry point for the automation study session.
 
-Initializes the Playwright browser, parses CLI arguments to set a fixed 
-AgentMode for the session, and attaches the global Orchestrator to handle 
-page loads. The agent mode is strictly controlled via the CLI to ensure 
-consistency during controlled experiments.
+Initializes the Playwright browser, configures session logging, and parses CLI
+arguments to set a fixed AgentMode (Manual, Assisted, or Autonomous) for the session.
+Attaches the global Orchestrator to handle continuous page load events. The agent
+mode is strictly controlled via the CLI to ensure consistency during experiments.
 """
 
 from __future__ import annotations
@@ -16,12 +16,13 @@ from playwright.async_api import async_playwright
 
 from context import AgentContext, AgentMode
 from orchestrator import Orchestrator
+from logger import setup_logging
 
-# Get rid of the openai INFO post requests
+# Mute HTTP transport and API client debug logging
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("openai").setLevel(logging.WARNING)
 
-logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
-logger = logging.getLogger(__name__)
 
 MODE_MAP = {
     "A": AgentMode.MANUAL,
@@ -32,6 +33,10 @@ MODE_MAP = {
 
 
 async def run(start_url: str, mode: AgentMode) -> None:
+    """Initializes the AgentContext and Playwright browser, and binds the Orchestrator to page loads."""
+
+    logger = logging.getLogger(__name__)
+
     logger.info(f"Running Agent in mode: {mode.name.lower().replace('_', '')}")
 
     ctx = AgentContext(mode=mode)
@@ -50,6 +55,7 @@ async def run(start_url: str, mode: AgentMode) -> None:
         logger.info(f"Opening start URL: {start_url}")
         await page.goto(start_url)
 
+        # TODO :- listen for exiting page/browser
         try:
             while True:
                 await asyncio.sleep(1)
@@ -60,7 +66,15 @@ async def run(start_url: str, mode: AgentMode) -> None:
 
 
 def main() -> None:
+    """Parses CLI arguments, sets up logging, and triggers the asynchronous run loop."""
+
     parser = argparse.ArgumentParser(description="Study automation agent")
+    parser.add_argument(
+        "--participant_id",
+        type=int,
+        required=True,
+        help="Participant ID, used by the study",
+    )
     parser.add_argument(
         "--mode",
         choices=MODE_MAP.keys(),
@@ -69,10 +83,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--url",
-        default="http://localhost:5001/",
+        default="http://31.70.108.229/set-password",
         help="Onboarding portal start URL",
     )
     args = parser.parse_args()
+
+    setup_logging(args.participant_id, args.mode)
 
     asyncio.run(run(args.url, MODE_MAP[args.mode]))
 

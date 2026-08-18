@@ -1,20 +1,19 @@
 """
-Provides persistent, multi-account credential storage. 
+Provides persistent, multi-account credential storage.
 
-Backed by a local JSON file, the CredentialVault automatically handles 
-saving, retrieving, and updating usernames, passwords, and TOTP secrets 
-for specific domains during observation and automation.
+Backed by a local JSON file, the CredentialVault automatically handles
+saving, retrieving, and dynamically updating usernames, passwords, and
+TOTP secrets for specific domains. Used heavily during observation to
+incrementally build credentials and during automation to supply them.
 """
 
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Optional
 from urllib.parse import urlparse
 
 from models import Credential
 
-logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -26,7 +25,7 @@ class CredentialVault:
         # {
         #     "domain": Credential(...)
         # }
-        self._store: Dict[str, Credential] = {}
+        self._store: dict[str, Credential] = {}
 
         self.load_from_disk()
 
@@ -34,16 +33,16 @@ class CredentialVault:
         """Extract the domain (and port, if present) from a URL."""
         parsed = urlparse(url)
 
-        if not parsed.netloc:
+        if not parsed.hostname:
             return "unknown_domain"
 
-        return parsed.netloc
+        return parsed.hostname
 
     def load_from_disk(self) -> None:
         """Load credentials from the JSON file into memory."""
         if not self.storage_path.exists():
             logger.info(
-                f"Vault: {self.storage_path} not found. " "Starting with empty vault."
+                f"Vault: {self.storage_path} not found. Starting with empty vault."
             )
             self._store = {}
             return
@@ -68,7 +67,7 @@ class CredentialVault:
 
         except (json.JSONDecodeError, OSError, TypeError, AttributeError) as e:
             logger.error(
-                f"Vault: Error reading credentials from " f"{self.storage_path}: {e}"
+                f"Vault: Error reading credentials from {self.storage_path}: {e}"
             )
 
     def save_to_disk(self) -> None:
@@ -90,38 +89,80 @@ class CredentialVault:
 
             temp_path.replace(self.storage_path)
 
-            logger.info(
-                f"Vault: Updated credentials persisted to " f"{self.storage_path}"
-            )
+            logger.info(f"Vault: Updated credentials persisted to {self.storage_path}")
 
         except OSError as e:
             logger.error(
-                f"Vault: Error writing credentials to " f"{self.storage_path}: {e}"
+                f"Vault: Error writing credentials to {self.storage_path}: {e}"
             )
 
     def save_credentials(
         self,
         url: str,
-        username: Optional[str],
-        password: Optional[str],
+        username: str | None = None,
+        password: str | None = None,
     ) -> None:
-        """Save newly observed credentials for a domain."""
-        if not password:
+        """Save newly observed credentials for a domain incrementally."""
+        if not username and not password:
             return
 
         domain = self._get_domain(url)
 
-        self._store[domain] = Credential(
-            username=username,
-            password=password,
-        )
+        if domain not in self._store:
+            self._store[domain] = Credential()
 
-        logger.info(
-            f"Vault: Captured credentials for user [{username}] "
-            f"on domain [{domain}]"
-        )
+        credential = self._store[domain]
 
-        self.save_to_disk()
+        updated = False
+        if username and username != credential.username:
+            credential.username = username
+            updated = True
+
+        if password and password != credential.password:
+            credential.password = password
+            updated = True
+
+        if updated:
+            logger.info(
+                f"Vault: Updated credentials (user: {bool(username)}, pass: {bool(password)}) "
+                f"on domain [{domain}]"
+            )
+            self.save_to_disk()
+
+    def update_credential(
+        self,
+        url: str,
+        username: str | None = None,
+        password: str | None = None,
+        totp_secret: str | None = None,
+    ) -> None:
+        """Flexibly update or create a credential partially based on multi-step observation."""
+        if not any([username, password, totp_secret]):
+            return
+
+        domain = self._get_domain(url)
+        credential = self._store.get(domain)
+
+        if credential is None:
+            credential = Credential()
+            self._store[domain] = credential
+
+        updated_flags = []
+        if username:
+            credential.username = username
+            updated_flags.append(f"user [{username}]")
+        if password:
+            credential.password = password
+            updated_flags.append("pass [***]")
+        if totp_secret:
+            credential.totp_secret = totp_secret
+            updated_flags.append("totp [***]")
+
+        if updated_flags:
+            logger.info(
+                f"Vault: Updated credentials ({', '.join(updated_flags)}) on domain [{domain}]"
+            )
+            self.save_to_disk()
 
     def save_totp_secret(self, url: str, secret: str) -> None:
         """Save a learned 2FA/TOTP secret for a domain."""
@@ -139,7 +180,7 @@ class CredentialVault:
 
         self.save_to_disk()
 
-    def get_credential(self, url: str) -> Optional[Credential]:
+    def get_credential(self, url: str) -> Credential | None:
         """Return the credential associated with the URL's domain."""
         domain = self._get_domain(url)
         return self._store.get(domain)
@@ -149,3 +190,8 @@ class CredentialVault:
         credential = self.get_credential(url)
 
         return bool(credential and credential.username and credential.password)
+
+    def has_totp_secret_for(self, url: str) -> bool:
+        credential = self.get_credential(url)
+
+        return bool(credential and credential.totp_secret)

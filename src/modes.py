@@ -1,11 +1,10 @@
 """
-Defines the ModePolicy strategy classes for the four study conditions 
-(Manual, Assisted, Autonomous Slow, Autonomous Fast). 
+Defines the ModePolicy strategy classes for the four study conditions
+(Manual, Assisted, Autonomous Slow, Autonomous Fast).
 
-Governs whether and how the automation agent is allowed to act on a page 
-(e.g., asking for user permission or rendering visual overlays). This 
-strategy pattern prevents the duplication of core observation and login 
-logic across different experimental conditions.
+Governs whether and how the automation agent is allowed to act on a page
+(e.g., asking for user permission, rendering visual overlays, or enabling
+human-like typing delays).
 """
 
 from __future__ import annotations
@@ -15,7 +14,6 @@ import logging
 
 from context import AgentMode
 
-logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 _SET_OVERLAY_JS = """

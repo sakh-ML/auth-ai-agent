@@ -1,9 +1,10 @@
 """
-Defines the AgentContext, representing the core global state for the session. 
+Defines the AgentContext, representing the core global state for the session.
 
-Centralizes the active AgentMode, the CredentialVault, and the AIClient 
-instance. Passed down to components like the Orchestrator and Automator 
-to prevent duplicated state and ensure consistent access to credentials.
+Centralizes the active AgentMode, the CredentialVault for storage, and the
+AIClient instance. Passed down to components like the Orchestrator, Observer,
+and Automator to prevent duplicated state and ensure consistent access to
+credentials and LLM capabilities.
 """
 
 from models import AgentMode
