@@ -29,7 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_participant_id():
+def get_participant_id() -> int:
     participant_id = read_file(PARTICIPANT_ID_FILE_PATH)
 
     if participant_id is None:
@@ -47,7 +47,7 @@ def get_participant_id():
     return participant_id
 
 
-def get_agent_order(participant_id: int):
+def get_agent_order(participant_id: int) -> list[str]:
     participant_mode = (participant_id - 1) % 4 + 1
     agents_order = participant_to_agent[participant_mode]
 
@@ -66,7 +66,7 @@ def wait_for_start(participant_id: int, agent_mode: str) -> bool:
     try:
         input(
             f"\nPress Enter to start "
-            f"agent {agent_mode} for participant {participant_id}... "
+            f"agent {agent_mode} for participant {participant_id} ... "
         )
         return True
     except KeyboardInterrupt:

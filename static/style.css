@@ -1,0 +1,214 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    /* Ein dunkler Hintergrund lässt den "Brief" besser wirken */
+    background: #2b3036; 
+    color: #202124;
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    display: flex;
+    align-items: center;
+}
+
+.page {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 60px 20px;
+}
+
+.card {
+    width: 100%;
+    max-width: 760px;
+    background: #ffffff;
+    border-radius: 4px 4px 8px 8px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    position: relative;
+    /* Platz für die Briefumschlag-Lasche */
+    margin-top: 40px; 
+}
+
+/* Die Briefumschlag-Lasche oben (Envelope Flap) */
+.card::before {
+    content: "";
+    position: absolute;
+    top: -40px;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    background: #84b819; /* TU Dortmund Grün */
+    clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+/* Ein subtiler Abschluss unten für den Brief-Look */
+.card::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: #84b819;
+    border-radius: 0 0 8px 8px;
+}
+
+.header {
+    padding: 40px 42px 20px;
+    text-align: center;
+    border-bottom: 2px dashed #e5e7eb;
+}
+
+.university {
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    color: #84b819;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #333;
+}
+
+.content {
+    padding: 34px 42px 50px;
+    line-height: 1.6;
+    font-size: 16px;
+}
+
+h2 {
+    margin-top: 35px;
+    margin-bottom: 15px;
+    font-size: 20px;
+    color: #4a6b0f;
+}
+
+ol {
+    padding-left: 24px;
+    background: #fdfdfc;
+    padding: 20px 20px 20px 40px;
+    border-radius: 8px;
+    border: 1px solid #f0f0f0;
+}
+
+li {
+    margin-bottom: 12px;
+}
+
+.notice {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: #f4f9eb;
+    border-left: 4px solid #84b819;
+    border-radius: 0 4px 4px 0;
+}
+
+.notice strong {
+    color: #4a6b0f;
+}
+
+.notice p {
+    margin: 6px 0 0;
+}
+
+form {
+    margin-top: 30px;
+    background: #fafafa;
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid #eaeaea;
+}
+
+label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 7px;
+    font-weight: 600;
+    color: #333;
+}
+
+label:first-of-type {
+    margin-top: 0;
+}
+
+input,
+select {
+    width: 100%;
+    padding: 12px 13px;
+    border: 1px solid #b8bdc7;
+    border-radius: 4px;
+    background: white;
+    font-size: 16px;
+    transition: border-color 0.2s;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: #84b819;
+    box-shadow: 0 0 0 3px rgba(132, 184, 25, 0.2);
+}
+
+button {
+    width: 100%;
+    margin-top: 28px;
+    padding: 15px 18px;
+    border: 0;
+    border-radius: 4px;
+    background: #84b819;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+button:hover {
+    background: #6a9611;
+}
+
+button:active {
+    transform: translateY(1px);
+}
+
+button:disabled {
+    background: #c5d6a1;
+    cursor: default;
+}
+
+.error {
+    margin-top: 12px;
+    color: #d32f2f;
+    font-weight: 600;
+}
+
+.started {
+    margin-top: 30px;
+    padding: 20px;
+    background: #e8f5e9;
+    border: 1px solid #c8e6c9;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.started h2 {
+    margin-top: 0;
+    color: #2e7d32;
+}
+
+footer {
+    padding: 24px 42px 30px;
+    text-align: center;
+    font-weight: bold;
+    color: #84b819;
+    font-size: 20px;
+    font-family: "Georgia", serif;
+    font-style: italic;
+}

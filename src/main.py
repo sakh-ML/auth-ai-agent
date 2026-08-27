@@ -59,8 +59,15 @@ async def run(start_url: str, mode: AgentMode) -> None:
 
     async with async_playwright() as playwright:
         logger.info("Starting browser")
-        browser = await playwright.firefox.launch(headless=False)
-        page = await browser.new_page()
+
+        # Launch browser with start-maximized flag
+        browser = await playwright.firefox.launch(
+            headless=False, args=["--start-maximized"]
+        )
+
+        # Disable default fixed viewport so the site stretches to fill the screen
+        context = await browser.new_context(no_viewport=True)
+        page = await context.new_page()
 
         page.on(
             "load",

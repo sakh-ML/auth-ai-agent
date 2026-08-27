@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Willkommen zur Studie - TU Dortmund</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main class="page">
+        <section class="card">
+            <header class="header">
+                <div class="university">TU Dortmund</div>
+                <h1>Willkommen zur Studie!</h1>
+            </header>
+
+            <section class="content">
+                <p>Hallo Studentin / Hallo Student,</p>
+
+                <p>
+                    herzlich willkommen! Vielen Dank, dass du an unserer Studie zum neuen KI-basierten Authentifizierungs-Agenten teilnimmst. Deine erste Aufgabe ist das Onboarding.
+                </p>
+
+                <h2>Was ist deine Aufgabe?</h2>
+
+                <ol>
+                    <li><strong>Finde deine Daten:</strong> Neben dir auf dem Tisch liegt ein Blatt Papier mit deinen persönlichen Zugangsdaten.</li>
+                    <li><strong>Onboarding abschließen:</strong> Erstelle mit diesen Daten zunächst dein Konto und schließe das Onboarding ab.</li>
+                    <li><strong>Uni-Systeme nutzen:</strong> Melde dich anschließend in den verschiedenen Systemen der Uni an (z. B. zur Anmeldung für bestimmte Module).</li>
+                    <li><strong>Anweisungen folgen:</strong> Lass dich einfach vom System durch die weiteren Schritte leiten.</li>
+                </ol>
+
+                <div class="notice">
+                    <strong>Hinweis</strong>
+                    <p>
+                        Bitte führe die Aufgaben so natürlich wie möglich durch, so wie du es im echten Studienalltag auch tun würdest. Wenn du unsicher bist, wende dich gerne an die Studienleitung.
+                    </p>
+                </div>
+
+                <h2>Deine Studiendaten</h2>
+
+                <form id="study-form">
+                    <label for="participant-id">Teilnehmer-ID (vom Papier)</label>
+                    <input
+                        id="participant-id"
+                        name="participant_id"
+                        type="number"
+                        min="1"
+                        step="1"
+                        required
+                        placeholder="z. B. 12"
+                    >
+
+                    <label for="mode">Agent-Modus (optional)</label>
+                    <select id="mode" name="mode">
+                        <option value="">Bitte auswählen</option>
+                        <option value="A">A – Manual</option>
+                        <option value="B">B – Assisted</option>
+                        <option value="C1">C1 – Autonomous Slow</option>
+                        <option value="C2">C2 – Autonomous Fast</option>
+                    </select>
+
+                    <button type="submit" id="start-button">
+                        Studie jetzt starten
+                    </button>
+
+                    <p id="error" class="error" hidden></p>
+                </form>
+
+                <div id="started" class="started" hidden>
+                    <h2>Perfekt!</h2>
+                    <p>
+                        Die Studie wird jetzt gestartet. Bitte schließe diesen Browser-Tab nicht.
+                    </p>
+                </div>
+            </section>
+
+            <footer>
+                Wir wünschen dir viel Erfolg!
+            </footer>
+        </section>
+    </main>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
