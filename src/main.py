@@ -17,6 +17,9 @@ from playwright.async_api import async_playwright
 from context import AgentContext, AgentMode
 from orchestrator import Orchestrator
 from logger import setup_logging
+from client import AIClient
+from observer import AIGenericObserver
+from automator import AIAutomator
 
 # Mute HTTP transport and API client debug logging
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -32,15 +35,27 @@ MODE_MAP = {
 }
 
 
+def build_orchestrator(mode: AgentMode) -> Orchestrator:
+    """Build and return an orchestrator configured for the given agent mode."""
+
+    ai_client = AIClient()
+    ctx = AgentContext(mode=mode, ai_client=ai_client)
+
+    observer = AIGenericObserver(ctx)
+    automator = AIAutomator(ctx)
+    orchestrator = Orchestrator(ctx, observer, automator)
+
+    return orchestrator
+
+
 async def run(start_url: str, mode: AgentMode) -> None:
     """Initializes the AgentContext and Playwright browser, and binds the Orchestrator to page loads."""
 
     logger = logging.getLogger(__name__)
 
-    logger.info(f"Running Agent in mode: {mode.name.lower().replace('_', '')}")
+    logger.info(f"Running Agent in mode: {mode.name.upper().replace('_', '')}")
 
-    ctx = AgentContext(mode=mode)
-    orchestrator = Orchestrator(ctx)
+    orchestrator = build_orchestrator(mode)
 
     async with async_playwright() as playwright:
         logger.info("Starting browser")
@@ -90,7 +105,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--url",
-        default="http://31.70.108.229/set-password",
+        default="http://onboarding.tu-dortmund-services.de/",
         help="Onboarding portal start URL",
     )
     args = parser.parse_args()

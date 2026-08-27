@@ -13,51 +13,51 @@ import asyncio
 
 from context import AgentContext
 from portals import identify_portal
-from observer import AIGenericObserver
+from observer import BaseObserver
 from automator import AIAutomator
 from modes import make_policy
 from ui import ask_user_yes_no
 from portals import PortalType
+from event import Event, log_event
 
 logger = logging.getLogger(__name__)
 
 
 class Orchestrator:
-    def __init__(self, ctx: AgentContext):
+    def __init__(
+        self, ctx: AgentContext, observer: BaseObserver, automator: AIAutomator
+    ):
         self.ctx = ctx
+        self.observer = observer
+        self.automator = automator
+
         self.policy = make_policy(ctx.mode)
-        self.observer = AIGenericObserver(ctx)
 
-        self.automator = AIAutomator(ctx)
         self._on_flight: set[str] = set()
-
         self._lock = asyncio.Lock()
 
     async def on_page_load(self, page) -> None:
+        url = page.url
+        portal = identify_portal(url)
+        if not portal:
+            logger.warning(f"Ignoring non-study URL: {url}")
+            return
 
-        # Wait for the page to completely finish loading and network to settle
+        async with self._lock:
+            if url in self._on_flight:
+                logger.info(f"Already processing {url}, ignoring duplicate load event")
+                return
+            self._on_flight.add(url)
+
         try:
             await page.wait_for_load_state("networkidle", timeout=5000)
         except Exception as e:
             logger.warning(f"Network didn't idle in time, proceeding anyway: {e}")
 
-        async with self._lock:
-            url = page.url
-            # portal = identify_portal(url)
-
-            # if not portal:
-            #    logger.warning(f"Ignoring non-study URL: {url}")
-            #    return
-
-            if url in self._on_flight:
-                logger.info(f"Already processing {url}, ignoring duplicate load event")
-                return
-
-            self._on_flight.add(url)
-
-            try:
-                await self._handle_page(page, url)
-            finally:
+        try:
+            await self._handle_page(page, url)
+        finally:
+            async with self._lock:
                 self._on_flight.remove(url)
 
     async def _handle_page(self, page, url) -> None:
@@ -67,12 +67,15 @@ class Orchestrator:
         the AIAutomator or AIGenericObserver accordingly.
         """
 
+        portal_type = identify_portal(url)
+
         logger.info(f"Checking if {url} needs login")
 
         if not await self.automator.is_login_page(page):
             logger.info(f"Url: {url} don't require login")
         else:
             logger.info("Login page found")
+            log_event(Event.LOGIN_STARTED)
 
             if not self.ctx.vault.has_credential_for(url):
                 logger.info(
@@ -83,9 +86,12 @@ class Orchestrator:
 
             logger.info(f"Credentials found for: {url}")
 
-            # Ignore set-password pages; auto-login is not allowed there.
-            if "/set-password" in url:
-                logger.info(f"Skipping auto-login on set-password page: {url}")
+            if portal_type == PortalType.ONBOARDING:
+                logger.info(
+                    f"ONBOARDING page detected: {url}. "
+                    "Skipping auto-login and observing."
+                )
+                await self.observer.observe(page)
                 return
 
             action_name = f"login for: {url}"
@@ -120,6 +126,7 @@ class Orchestrator:
                     f"Automated login for {url} did not complete; observing instead"
                 )
                 await self.observer.observe(page)
+            log_event(Event.LOGIN_FINISHED)
             return
 
         logger.info(f"Checking if {url} needs 2FA")
@@ -128,6 +135,7 @@ class Orchestrator:
             logger.info(f"Url: {url} don't need 2fa")
         else:
             logger.info(f"Page requires 2FA: {url}")
+            log_event(Event.TWO_FA_STARTED)
 
             if not self.ctx.vault.has_totp_secret_for(url):
                 logger.info(
@@ -168,5 +176,6 @@ class Orchestrator:
                 )
                 await self.observer.observe(page)
                 return
+            log_event(Event.TWO_FA_FINISHED)
 
         logger.info(f"Page is not a login or 2FA page; skipping: {url}")

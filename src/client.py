@@ -1,15 +1,15 @@
 """
-Configures the AIClient for interacting with the OpenAI-compatible API. 
+Configures the AIClient for interacting with the OpenAI-compatible API.
 
-Defines the executable browser interaction tools (write_in_field, click_element) 
-provided to the LLM, and handles the formatting, parameterization, and 
+Defines the executable browser interaction tools (write_in_field, click_element)
+provided to the LLM, and handles the formatting, parameterization, and
 execution of remote API requests.
 """
 
-from openai import OpenAI
 from openai import AsyncOpenAI
 
 import os
+from abc import ABC, abstractmethod
 
 # Load dotenv needed if we have a .env file stored the variables there.
 from dotenv import load_dotenv
@@ -76,7 +76,17 @@ async def click_element(page, selector: str):
     await page.click(selector)
 
 
-class AIClient:
+class AIClientBase(ABC):
+    @abstractmethod
+    async def ask_client(
+        self,
+        user_input: str,
+        instructions: str,
+        tools=None,
+    ): ...
+
+
+class AIClient(AIClientBase):
     def __init__(self):
         api_key = os.getenv("SAIA_API_KEY")
         if not api_key:
@@ -87,11 +97,11 @@ class AIClient:
         )
         self.model = "meta-llama-3.1-8b-instruct"
 
-    async def ask_client(self, input, instructions, tools=None):
+    async def ask_client(self, user_input: str, instructions: str, tools=None):
         params = {
             "model": self.model,
             "instructions": instructions,
-            "input": input,
+            "input": user_input,
             "temperature": 0,
         }
 

@@ -20,22 +20,12 @@ class PortalType(Enum):
 
 
 # Adjust ports here to match how you actually launch the 5 Flask apps.
-PORTAL_URL_MAP: dict[tuple[str | None, int | None], PortalType] = {
-    ("localhost", 5001): PortalType.ONBOARDING,
-    ("localhost", 5002): PortalType.MAIL,
-    ("localhost", 5003): PortalType.LSF,
-    ("localhost", 5004): PortalType.MOODLE,
-    ("localhost", 5005): PortalType.BOSS,
-    ("127.0.0.1", 5001): PortalType.ONBOARDING,
-    ("127.0.0.1", 5002): PortalType.MAIL,
-    ("127.0.0.1", 5003): PortalType.LSF,
-    ("127.0.0.1", 5004): PortalType.MOODLE,
-    ("127.0.0.1", 5005): PortalType.BOSS,
-    ("31.70.108.229", 5001): PortalType.ONBOARDING,
-    ("31.70.108.229", 5002): PortalType.MAIL,
-    ("31.70.108.229", 5003): PortalType.LSF,
-    ("31.70.108.229", 5004): PortalType.MOODLE,
-    ("31.70.108.229", 5005): PortalType.BOSS,
+PORTAL_URL_MAP: dict[str, PortalType] = {
+    "onboarding.tu-dortmund-services.de": PortalType.ONBOARDING,
+    "mail.tu-dortmund-services.de": PortalType.MAIL,
+    "lsf.tu-dortmund-services.de": PortalType.LSF,
+    "moodle.tu-dortmund-services.de": PortalType.MOODLE,
+    "boss.tu-dortmund-services.de": PortalType.BOSS,
 }
 
 
@@ -45,4 +35,8 @@ def identify_portal(url: str) -> PortalType | None:
     if not url or url == "about:blank" or url.startswith("firefox-error://"):
         return None
     parsed = urlparse(url)
-    return PORTAL_URL_MAP.get((parsed.hostname, parsed.port))
+
+    hostname = parsed.hostname
+    hostname = hostname.lower()
+
+    return PORTAL_URL_MAP.get(hostname)

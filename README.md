@@ -33,7 +33,7 @@ uv run python src/main.py --participant_id <ID> --mode <MODE> [--url <START_URL>
 
 * `--participant_id`: Integer ID for the participant running the session. Used to name and separate that participant's log files (see [Logging](#logging) below).
 * `--mode`: One of `A`, `B`, `C1`, `C2` (see below).
-* `--url`: Optional. Defaults to `http://31.70.108.229/set-password`.
+* `--url`: Optional. Defaults to `onboarding.tu-dortmund-services.de`.
 
 ### Available Modes
 * `A` : **Manual** - Agent observes and learns credentials but never automates actions.
@@ -42,7 +42,7 @@ uv run python src/main.py --participant_id <ID> --mode <MODE> [--url <START_URL>
 * `C2`: **Autonomous Fast** - Fully autonomous, instant execution with no overlays.
 
 ### Examples
-Run the agent for participant 7 in Assisted mode on the default onboarding portal (http://31.70.108.229/set-password):
+Run the agent for participant 7 in Assisted mode on the default onboarding portal (onboarding.tu-dortmund-services.de):
 ```bash
 uv run python src/main.py --participant_id 7 --mode B
 ```

@@ -1,9 +1,9 @@
 """
-Provides custom, in-page UI overlays for participant interaction. 
+Provides custom, in-page UI overlays for participant interaction.
 
-Injects JavaScript-based dialogs and event listeners directly into the 
-DOM via Playwright. This bypasses the limitations of native browser dialogs 
-in automated sessions, providing a user-friendly interface for asking 
+Injects JavaScript-based dialogs and event listeners directly into the
+DOM via Playwright. This bypasses the limitations of native browser dialogs
+in automated sessions, providing a user-friendly interface for asking
 permission (Mode B) and listening for manual Escape interruptions (Mode C1).
 """
 

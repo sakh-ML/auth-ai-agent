@@ -42,7 +42,7 @@ async def get_page_dom(page) -> str:
                     el.setAttribute('src', 'BASE64_IMAGE_REMOVED');
                 }
             }
-            
+
             // Optional: Remove SVGs that are inline in weird ways
             if (el.tagName.toLowerCase() === 'g' || el.tagName.toLowerCase() === 'rect') {
                 el.remove();

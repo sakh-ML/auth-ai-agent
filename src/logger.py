@@ -40,8 +40,10 @@ def setup_logging(participant_id: int, mode: str, level: int = logging.INFO) -> 
     console_handler = logging.StreamHandler()
     file_handler = logging.FileHandler(log_file, mode="w", encoding="utf-8")
 
+    handlers = (console_handler, file_handler)
+
     # Apply formatter to handlers
-    for handler in (console_handler, file_handler):
+    for handler in handlers:
         handler.setFormatter(formatter)
 
     # force=True removes existing handlers

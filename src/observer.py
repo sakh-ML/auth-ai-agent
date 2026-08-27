@@ -26,7 +26,6 @@ class BaseObserver(ABC):
 
     def __init__(self, ctx: AgentContext):
         self.ctx = ctx
-        self._attached_urls: set[str] = set()
 
     @abstractmethod
     async def observe(self, page) -> None:
@@ -34,7 +33,6 @@ class BaseObserver(ABC):
         Analyzes the page and attaches listeners if necessary to capture
         credentials or 2FA secrets.
         """
-        pass
 
 
 # We define a highly flexible tool to let the AI report EXACTLY what it sees,
@@ -90,10 +88,6 @@ class AIGenericObserver(BaseObserver):
     """
 
     async def observe(self, page) -> None:
-        if page.url in self._attached_urls:
-            return
-        self._attached_urls.add(page.url)
-
         logger.info(f"AIGenericObserver: Asking AI to analyze {page.url}")
         dom = await get_page_dom(page)
 
@@ -102,7 +96,7 @@ class AIGenericObserver(BaseObserver):
 
         try:
             response = await self.ctx.ai_client.ask_client(
-                input=[{"role": "user", "content": observer_prompt}],
+                user_input=[{"role": "user", "content": observer_prompt}],
                 instructions=observer_system_prompt,
                 tools=OBSERVER_AI_TOOLS,
             )

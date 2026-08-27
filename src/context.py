@@ -9,12 +9,12 @@ credentials and LLM capabilities.
 
 from models import AgentMode
 from vault import CredentialVault
-from client import AIClient
+from client import AIClientBase
 
 
 class AgentContext:
 
-    def __init__(self, mode: AgentMode):
+    def __init__(self, mode: AgentMode, ai_client: AIClientBase):
         self.mode = mode
+        self.ai_client = ai_client
         self.vault = CredentialVault()
-        self.ai_client = AIClient()

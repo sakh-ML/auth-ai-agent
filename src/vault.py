@@ -3,14 +3,15 @@ Provides persistent, multi-account credential storage.
 
 Backed by a local JSON file, the CredentialVault automatically handles
 saving, retrieving, and dynamically updating usernames, passwords, and
-TOTP secrets for specific domains. Used heavily during observation to
-incrementally build credentials and during automation to supply them.
+TOTP secrets for registrable base domains. Used heavily during observation
+to incrementally build credentials and during automation to supply them.
 """
 
 import json
 import logging
 from pathlib import Path
 from urllib.parse import urlparse
+import tldextract
 
 from models import Credential
 
@@ -23,20 +24,25 @@ class CredentialVault:
 
         # Store structure:
         # {
-        #     "domain": Credential(...)
+        #     "base_domain": Credential(...)
         # }
         self._store: dict[str, Credential] = {}
 
         self.load_from_disk()
 
     def _get_domain(self, url: str) -> str:
-        """Extract the domain (and port, if present) from a URL."""
+        """Extract the hostname from a URL."""
         parsed = urlparse(url)
 
         if not parsed.hostname:
             return "unknown_domain"
 
         return parsed.hostname
+
+    def _get_base_domain(self, domain: str) -> str:
+        """Extract the registrable base domain from a hostname."""
+        result = tldextract.extract(domain)
+        return f"{result.domain}.{result.suffix}"
 
     def load_from_disk(self) -> None:
         """Load credentials from the JSON file into memory."""
@@ -53,8 +59,8 @@ class CredentialVault:
 
             self._store = {}
 
-            for domain, creds in data.items():
-                self._store[domain] = Credential(
+            for base_domain, creds in data.items():
+                self._store[base_domain] = Credential(
                     username=creds.get("username"),
                     password=creds.get("password"),
                     totp_secret=creds.get("totp_secret"),
@@ -62,7 +68,7 @@ class CredentialVault:
 
             logger.info(
                 f"Vault: Loaded credentials for {len(self._store)} "
-                f"domains from {self.storage_path}"
+                f"base domains from {self.storage_path}"
             )
 
         except (json.JSONDecodeError, OSError, TypeError, AttributeError) as e:
@@ -74,8 +80,8 @@ class CredentialVault:
         """Atomically save in-memory credentials to the JSON file."""
         data = {}
 
-        for domain, cred in self._store.items():
-            data[domain] = {
+        for base_domain, cred in self._store.items():
+            data[base_domain] = {
                 "username": cred.username,
                 "password": cred.password,
                 "totp_secret": cred.totp_secret,
@@ -102,16 +108,17 @@ class CredentialVault:
         username: str | None = None,
         password: str | None = None,
     ) -> None:
-        """Save newly observed credentials for a domain incrementally."""
+        """Save newly observed credentials for a base domain incrementally."""
         if not username and not password:
             return
 
         domain = self._get_domain(url)
+        base_domain = self._get_base_domain(domain)
 
-        if domain not in self._store:
-            self._store[domain] = Credential()
+        if base_domain not in self._store:
+            self._store[base_domain] = Credential()
 
-        credential = self._store[domain]
+        credential = self._store[base_domain]
 
         updated = False
         if username and username != credential.username:
@@ -125,7 +132,7 @@ class CredentialVault:
         if updated:
             logger.info(
                 f"Vault: Updated credentials (user: {bool(username)}, pass: {bool(password)}) "
-                f"on domain [{domain}]"
+                f"on base domain [{base_domain}]"
             )
             self.save_to_disk()
 
@@ -136,16 +143,18 @@ class CredentialVault:
         password: str | None = None,
         totp_secret: str | None = None,
     ) -> None:
-        """Flexibly update or create a credential partially based on multi-step observation."""
+        """Partially update or create credentials for a base domain."""
         if not any([username, password, totp_secret]):
             return
 
         domain = self._get_domain(url)
-        credential = self._store.get(domain)
+        base_domain = self._get_base_domain(domain)
+
+        credential = self._store.get(base_domain)
 
         if credential is None:
             credential = Credential()
-            self._store[domain] = credential
+            self._store[base_domain] = credential
 
         updated_flags = []
         if username:
@@ -160,38 +169,41 @@ class CredentialVault:
 
         if updated_flags:
             logger.info(
-                f"Vault: Updated credentials ({', '.join(updated_flags)}) on domain [{domain}]"
+                f"Vault: Updated credentials ({', '.join(updated_flags)}) on base domain [{base_domain}]"
             )
             self.save_to_disk()
 
     def save_totp_secret(self, url: str, secret: str) -> None:
-        """Save a learned 2FA/TOTP secret for a domain."""
+        """Save a learned 2FA/TOTP secret for a base domain."""
         domain = self._get_domain(url)
+        base_domain = self._get_base_domain(domain)
 
-        credential = self._store.get(domain)
+        credential = self._store.get(base_domain)
 
         if credential is None:
             credential = Credential()
-            self._store[domain] = credential
+            self._store[base_domain] = credential
 
         credential.totp_secret = secret
 
-        logger.info(f"Vault: Captured TOTP secret for domain [{domain}]")
+        logger.info(f"Vault: Captured TOTP secret for base domain [{base_domain}]")
 
         self.save_to_disk()
 
     def get_credential(self, url: str) -> Credential | None:
-        """Return the credential associated with the URL's domain."""
+        """Return the credential associated with the URL's base domain."""
         domain = self._get_domain(url)
-        return self._store.get(domain)
+        base_domain = self._get_base_domain(domain)
+        return self._store.get(base_domain)
 
     def has_credential_for(self, url: str) -> bool:
-        """Return True if a complete credential exists for the domain."""
+        """Return True if a complete credential exists for the base domain."""
         credential = self.get_credential(url)
 
         return bool(credential and credential.username and credential.password)
 
     def has_totp_secret_for(self, url: str) -> bool:
+        """Return True if a TOTP secret exists for the URL's base domain."""
         credential = self.get_credential(url)
 
         return bool(credential and credential.totp_secret)

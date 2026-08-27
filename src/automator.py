@@ -16,7 +16,6 @@ from enum import Enum
 import pyotp
 
 from client import TOOLS, write_in_field, click_element
-from clean_dom import get_page_dom
 from context import AgentContext
 from prompts import (
     get_system_prompt,
@@ -184,7 +183,7 @@ class AIAutomator:
 
             input_data = [{"role": "user", "content": f"{prompt}"}]
             response = await self.ctx.ai_client.ask_client(
-                input=input_data, instructions=system_prompt
+                user_input=input_data, instructions=system_prompt
             )
 
             response = response.output_text.strip().lower()
@@ -202,7 +201,7 @@ class AIAutomator:
 
             input_data = [{"role": "user", "content": f"{prompt}"}]
             response = await self.ctx.ai_client.ask_client(
-                input=input_data, instructions=system_prompt
+                user_input=input_data, instructions=system_prompt
             )
 
             response = response.output_text.strip().lower()
@@ -234,7 +233,7 @@ class AIAutomator:
             input_list = [{"role": "user", "content": f"{prompt}"}]
 
             response = await self.ctx.ai_client.ask_client(
-                input=input_list, instructions=system_prompt, tools=TOOLS
+                user_input=input_list, instructions=system_prompt, tools=TOOLS
             )
 
             return await self._run_tool_calls(page, response, human_like)
@@ -272,7 +271,7 @@ class AIAutomator:
             input_list = [{"role": "user", "content": f"{prompt}"}]
 
             response = await self.ctx.ai_client.ask_client(
-                input=input_list, instructions=system_prompt, tools=TOOLS
+                user_input=input_list, instructions=system_prompt, tools=TOOLS
             )
 
             return await self._run_tool_calls(page, response, human_like)

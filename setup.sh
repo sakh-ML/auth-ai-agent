@@ -13,6 +13,6 @@ uv sync
 echo "Installing Playwright browsers..."
 # The main.py script specifically launches Firefox, so we only need to install that browser
 # U can also download chrome or other browsers ...
-uv run playwright install firefox
+uv run python -m playwright install firefox
 
 echo "Setup complete! Don't forget to set up your .env file."
