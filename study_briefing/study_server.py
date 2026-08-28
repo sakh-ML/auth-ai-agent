@@ -6,12 +6,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
 
-
 BASE_DIR = Path(__file__).parent
 
 
 class StudyServer:
-    def __init__(self, on_start: Callable[[int, str], None]):
+    def __init__(self, on_start: Callable[[], None]):
         self.on_start = on_start
 
         handler = self._make_handler()
@@ -27,7 +26,6 @@ class StudyServer:
 
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, format: str, *args) -> None:
-                # Keep the terminal output clean.
                 return
 
             def send_json(self, status: int, data: dict) -> None:
@@ -78,28 +76,8 @@ class StudyServer:
                     self.send_json(404, {"error": "Not found"})
                     return
 
-                try:
-                    length = int(self.headers.get("Content-Length", "0"))
-                    body = self.rfile.read(length)
-                    data = json.loads(body)
-
-                    participant_id = int(data["participant_id"])
-                    mode = str(data["mode"])
-
-                    if participant_id < 1:
-                        raise ValueError("Participant ID must be positive.")
-
-                    if mode not in {"A", "B", "C1", "C2"}:
-                        mode = ""
-
-                except (ValueError, KeyError, TypeError, json.JSONDecodeError):
-                    self.send_json(
-                        400,
-                        {"error": "Ungültige Teilnehmer-ID oder Agent-Modus."},
-                    )
-                    return
-
-                parent.on_start(participant_id, mode)
+                # Just trigger the callback without extracting JSON data
+                parent.on_start()
                 self.send_json(200, {"ok": True})
 
         return Handler

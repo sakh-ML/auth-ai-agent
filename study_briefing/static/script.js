@@ -9,22 +9,13 @@ form.addEventListener("submit", async (event) => {
     error.hidden = true;
     button.disabled = true;
 
-    const participantId = Number(
-        document.getElementById("participant-id").value
-    );
-    const modeValue = document.getElementById("mode").value;
-    const mode = modeValue === "" ? null : modeValue;
-
     try {
         const response = await fetch("/start-study", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-                participant_id: participantId,
-                mode: mode,
-            }),
+            body: JSON.stringify({}), // Sending an empty payload
         });
 
         const data = await response.json();

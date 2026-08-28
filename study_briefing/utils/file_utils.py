@@ -10,11 +10,11 @@ def read_file(path: str) -> str | None:
         return None
 
     if not os.path.exists(path):
-        logger.error(f"Path: {path} doesn't exist")
+        logger.warning(f"Path: {path} doesn't exist")
         return None
 
     if not os.path.isfile(path):
-        logger.error(f"Path: {path} is not a file")
+        logger.warning(f"Path: {path} is not a file")
         return None
 
     with open(path) as file:

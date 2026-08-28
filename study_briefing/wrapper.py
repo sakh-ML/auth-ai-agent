@@ -6,13 +6,16 @@ and waiting between runs.
 
 import logging
 import subprocess
-import time
+from pathlib import Path
 
-from src.utils.file_utils import read_file, write_to_file
+from utils.file_utils import read_file, write_to_file
 
 
 WAITING_INTERVAL_BETWEEN_RUNS = 10
 PARTICIPANT_ID_FILE_PATH = "participant_id.txt"
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 
 # Counterbalanced agent order, repeated every 4 participants.
 participant_to_agent = {
@@ -96,7 +99,7 @@ def run_agent(
 
     logger.info(f"Calling: {args}")
 
-    subprocess.run(args, check=True)
+    subprocess.run(args, check=True, cwd=PROJECT_ROOT)
 
 
 def main() -> None:
