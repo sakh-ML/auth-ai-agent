@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 from urllib.parse import parse_qsl
 from context import AgentContext
 from clean_dom import get_page_dom
+from event import Event, log_event
 from prompts import get_prompt, get_system_prompt, Prompt, SystemPrompt
 
 logger = logging.getLogger(__name__)
@@ -95,11 +96,13 @@ class AIGenericObserver(BaseObserver):
         observer_prompt = get_prompt(Prompt.OBSERVER_PROMPT, dom)
 
         try:
+            log_event(Event.ASKING_LLM_STARTED)
             response = await self.ctx.ai_client.ask_client(
                 user_input=[{"role": "user", "content": observer_prompt}],
                 instructions=observer_system_prompt,
                 tools=OBSERVER_AI_TOOLS,
             )
+            log_event(Event.ASKING_LLM_FINISHED)
 
             detected_anything = False
 

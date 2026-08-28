@@ -17,6 +17,7 @@ import pyotp
 
 from client import TOOLS, write_in_field, click_element
 from context import AgentContext
+from event import Event, log_event
 from prompts import (
     get_system_prompt,
     get_prompt,
@@ -182,9 +183,12 @@ class AIAutomator:
             prompt = get_prompt(Prompt.CHECK_LOGIN_PROMPT, dom)
 
             input_data = [{"role": "user", "content": f"{prompt}"}]
+
+            log_event(Event.ASKING_LLM_STARTED)
             response = await self.ctx.ai_client.ask_client(
                 user_input=input_data, instructions=system_prompt
             )
+            log_event(Event.ASKING_LLM_FINISHED)
 
             response = response.output_text.strip().lower()
             return response == "yes"
@@ -200,9 +204,12 @@ class AIAutomator:
             prompt = get_prompt(Prompt.CHECK_2FA_PROMPT, dom)
 
             input_data = [{"role": "user", "content": f"{prompt}"}]
+
+            log_event(Event.ASKING_LLM_STARTED)
             response = await self.ctx.ai_client.ask_client(
                 user_input=input_data, instructions=system_prompt
             )
+            log_event(Event.ASKING_LLM_FINISHED)
 
             response = response.output_text.strip().lower()
             return response == "yes"
@@ -232,9 +239,11 @@ class AIAutomator:
 
             input_list = [{"role": "user", "content": f"{prompt}"}]
 
+            log_event(Event.ASKING_LLM_STARTED)
             response = await self.ctx.ai_client.ask_client(
                 user_input=input_list, instructions=system_prompt, tools=TOOLS
             )
+            log_event(Event.ASKING_LLM_FINISHED)
 
             return await self._run_tool_calls(page, response, human_like)
 
@@ -270,9 +279,11 @@ class AIAutomator:
 
             input_list = [{"role": "user", "content": f"{prompt}"}]
 
+            log_event(Event.ASKING_LLM_STARTED)
             response = await self.ctx.ai_client.ask_client(
                 user_input=input_list, instructions=system_prompt, tools=TOOLS
             )
+            log_event(Event.ASKING_LLM_FINISHED)
 
             return await self._run_tool_calls(page, response, human_like)
 
