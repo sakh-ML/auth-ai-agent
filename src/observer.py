@@ -5,6 +5,14 @@ Includes the abstract BaseObserver and the AIGenericObserver, which utilizes
 an LLM to dynamically analyze DOM structures. It locates specific authentication
 elements (like input fields and displayed TOTP secrets) and attaches network
 listeners to intercept POST requests, automatically saving credentials to the vault.
+
+IMPORTANT (timing contract):
+`observe()` no longer just "fires and forgets" a network listener. It returns
+an asyncio.Event that the caller MUST await (with a timeout) before treating
+the observation as finished. Attaching a listener is not the same as the
+listener having fired - the previous version returned as soon as the listener
+was attached, which caused the orchestrator to log LOGIN_FINISHED / 2FA_FINISHED
+events far too early (before the user had actually submitted anything).
 """
 
 import asyncio
@@ -166,6 +174,9 @@ class AIGenericObserver(BaseObserver):
                         if count > 0:
                             secret_text = await locator.first.text_content()
                             if secret_text:
+                                already_known = self.ctx.vault.has_totp_secret_for(
+                                    page.url
+                                )
                                 self.ctx.vault.save_totp_secret(
                                     page.url, secret_text.strip()
                                 )
@@ -173,10 +184,8 @@ class AIGenericObserver(BaseObserver):
                                     f"Successfully saved displayed TOTP secret via AI generic observer for {page.url}"
                                 )
                                 detected_anything = True
-                                # This path is synchronous: we already have
-                                # the secret, so observation is genuinely
-                                # complete right now - unblock any waiter.
-                                capture_event.set()
+                                if not already_known:
+                                    capture_event.set()
                         else:
                             logger.warning(
                                 f"Selector '{css_selector}' returned 0 matching elements in the DOM."
