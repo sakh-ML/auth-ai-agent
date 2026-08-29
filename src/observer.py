@@ -7,6 +7,7 @@ elements (like input fields and displayed TOTP secrets) and attaches network
 listeners to intercept POST requests, automatically saving credentials to the vault.
 """
 
+import asyncio
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -29,10 +30,22 @@ class BaseObserver(ABC):
         self.ctx = ctx
 
     @abstractmethod
-    async def observe(self, page) -> None:
+    async def observe(self, page) -> asyncio.Event:
         """
         Analyzes the page and attaches listeners if necessary to capture
         credentials or 2FA secrets.
+
+        Returns an asyncio.Event that is SET only once the observation has
+        actually produced a result:
+          - a credential/TOTP secret was captured via a POST interception, or
+          - a displayed TOTP secret was read directly from the DOM, or
+          - the page was closed/navigated away (so we stop waiting), or
+          - the observer itself failed hard (so we don't hang forever).
+
+        Callers MUST await this event (with a timeout) before checking vault
+        state and logging any *_FINISHED / *_INTERRUPTED event. Do NOT log
+        those events immediately after `observe()` returns - that only means
+        "listening has started", not "listening succeeded".
         """
 
 
@@ -88,21 +101,33 @@ class AIGenericObserver(BaseObserver):
     network listener for matching POST fields.
     """
 
-    async def observe(self, page) -> None:
-        logger.info(f"AIGenericObserver: Asking AI to analyze {page.url}")
-        dom = await get_page_dom(page)
+    async def observe(self, page) -> asyncio.Event:
+        capture_event = asyncio.Event()
 
-        observer_system_prompt = get_system_prompt(SystemPrompt.OBSERVER_SYSTEM_PROMPT)
-        observer_prompt = get_prompt(Prompt.OBSERVER_PROMPT, dom)
+        # If the page closes/navigates away while we're still waiting on the
+        # capture_event, stop waiting instead of hanging until the timeout.
+        def _on_close() -> None:
+            if not capture_event.is_set():
+                logger.info("AIGenericObserver: page closed while observing; unblocking waiter")
+                capture_event.set()
+
+        page.once("close", _on_close)
+
+        logger.info(f"AIGenericObserver: Asking AI to analyze {page.url}")
 
         try:
-            log_event(Event.ASKING_LLM_STARTED)
+            dom = await get_page_dom(page)
+
+            observer_system_prompt = get_system_prompt(SystemPrompt.OBSERVER_SYSTEM_PROMPT)
+            observer_prompt = get_prompt(Prompt.OBSERVER_PROMPT, dom)
+
+            log_event(Event.ASKING_LLM_OBSERVE_PAGE_STARTED)
             response = await self.ctx.ai_client.ask_client(
                 user_input=[{"role": "user", "content": observer_prompt}],
                 instructions=observer_system_prompt,
                 tools=OBSERVER_AI_TOOLS,
             )
-            log_event(Event.ASKING_LLM_FINISHED)
+            log_event(Event.ASKING_LLM_OBSERVE_PAGE_FINISHED)
 
             detected_anything = False
 
@@ -148,6 +173,10 @@ class AIGenericObserver(BaseObserver):
                                     f"Successfully saved displayed TOTP secret via AI generic observer for {page.url}"
                                 )
                                 detected_anything = True
+                                # This path is synchronous: we already have
+                                # the secret, so observation is genuinely
+                                # complete right now - unblock any waiter.
+                                capture_event.set()
                         else:
                             logger.warning(
                                 f"Selector '{css_selector}' returned 0 matching elements in the DOM."
@@ -184,19 +213,35 @@ class AIGenericObserver(BaseObserver):
                     logger.info(
                         f"AI detected auth fields. Expected POST fields mapping: {field_mapping}"
                     )
-                    self._attach_network_listener(page, field_mapping)
+                    self._attach_network_listener(page, field_mapping, capture_event)
                     detected_anything = True
 
             if not detected_anything:
                 logger.info(
                     "AIGenericObserver: AI did not detect any authentication fields or displayed secrets."
                 )
+                # Nothing to wait for at all - don't block the caller.
+                capture_event.set()
 
         except Exception as e:
             logger.error(f"AIGenericObserver failed: {e}", exc_info=True)
+            # A hard failure means there's nothing left to wait for either -
+            # unblock the caller instead of leaving them hanging until the
+            # timeout for no reason.
+            capture_event.set()
 
-    def _attach_network_listener(self, page, field_mapping: dict) -> None:
-        """Listens for POST requests and flexibly captures any mapped fields it finds."""
+        return capture_event
+
+    def _attach_network_listener(
+        self, page, field_mapping: dict, capture_event: asyncio.Event
+    ) -> None:
+        """Listens for POST requests and flexibly captures any mapped fields it finds.
+
+        Sets `capture_event` only once a real credential/secret has been
+        captured, so the orchestrator can distinguish "listener attached" from
+        "listener actually fired" and log accurate FINISHED/INTERRUPTED
+        timestamps instead of logging FINISHED immediately after attaching.
+        """
 
         def handle_request(request):
             if request.method != "POST":
@@ -248,6 +293,25 @@ class AIGenericObserver(BaseObserver):
                         password=captured.get("password"),
                         totp_secret=captured.get("totp_secret"),
                     )
+
+                    # This is the REAL completion signal - only now has the
+                    # observation actually produced something usable.
+                    if not capture_event.is_set():
+                        capture_event.set()
+
+                    # Detach so we don't keep matching/re-saving on later,
+                    # unrelated POST requests during the same page lifetime.
+                    try:
+                        page.remove_listener("request", handle_request)
+                    except Exception:
+                        # Some Playwright versions/backends may not support
+                        # remove_listener identically; don't let cleanup
+                        # failures break credential capture.
+                        logger.debug(
+                            "AIGenericObserver: could not remove request listener "
+                            "after capture (non-fatal).",
+                            exc_info=True,
+                        )
             except Exception as e:
                 logger.error(f"Error parsing request payload: {e}")
 

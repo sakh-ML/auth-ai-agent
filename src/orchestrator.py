@@ -22,6 +22,11 @@ from event import Event, log_event
 
 logger = logging.getLogger(__name__)
 
+# Fallback if the AgentContext doesn't define its own observe_timeout.
+# Manual/Assisted study conditions may want a much longer value (a human
+# needs time to type).
+DEFAULT_OBSERVE_TIMEOUT_SECONDS = 120.0
+
 
 class Orchestrator:
     def __init__(
@@ -60,20 +65,59 @@ class Orchestrator:
             async with self._lock:
                 self._on_flight.remove(url)
 
+    async def _observe_then_log(
+        self,
+        page,
+        url: str,
+        finished_event: Event,
+        interrupted_event: Event,
+        has_result_fn,
+        timeout: float | None = None,
+    ) -> bool:
+        """
+        Runs observation and waits for the observation to REALLY finish
+        (a capture happened, the page closed, or the observer failed) before
+        checking vault state and logging finished/interrupted.
+
+        This is the single place where observe -> check -> log happens, so
+        the timing bug can't quietly reappear in one of the several call
+        sites that need this pattern.
+
+        Returns True if `has_result_fn(url)` is true after waiting (i.e. the
+        expected credential/TOTP secret actually showed up in time).
+        """
+        capture_event = await self.observer.observe(page)
+
+        effective_timeout = (
+            timeout
+            if timeout is not None
+            else DEFAULT_OBSERVE_TIMEOUT_SECONDS
+        )
+
+        try:
+            await asyncio.wait_for(capture_event.wait(), timeout=effective_timeout)
+        except asyncio.TimeoutError:
+            logger.warning(
+                f"Observation for {url} did not complete within "
+                f"{effective_timeout}s; proceeding with whatever the vault has now"
+            )
+
+        got_it = has_result_fn(url)
+        log_event(finished_event if got_it else interrupted_event)
+        return got_it
+
     async def _handle_page(self, page, url) -> None:
         """
         Core logic for evaluating a loaded page. Checks for login or 2FA states,
         verifies vault credentials, enforces user permission policies, and triggers
-        the AIAutomator or AIGenericObserver accordingly.
+        the AIAutomator or BaseObserver accordingly.
         """
 
         portal_type = identify_portal(url)
 
         logger.info(f"Checking if {url} needs login")
 
-        if not await self.automator.is_login_page(page):
-            logger.info(f"Url: {url} don't require login")
-        else:
+        if await self.automator.is_login_page(page):
             logger.info("Login page found")
             log_event(Event.LOGIN_STARTED)
 
@@ -81,7 +125,13 @@ class Orchestrator:
                 logger.info(
                     f"No login credentials found for {url}; observing the website for credentials"
                 )
-                await self.observer.observe(page)
+                await self._observe_then_log(
+                    page,
+                    url,
+                    Event.LOGIN_FINISHED,
+                    Event.LOGIN_INTERRUPTED,
+                    self.ctx.vault.has_totp_secret_for,
+                )
                 return
 
             logger.info(f"Credentials found for: {url}")
@@ -91,7 +141,13 @@ class Orchestrator:
                     f"ONBOARDING page detected: {url}. "
                     "Skipping auto-login and observing."
                 )
-                await self.observer.observe(page)
+                await self._observe_then_log(
+                    page,
+                    url,
+                    Event.LOGIN_FINISHED,
+                    Event.LOGIN_INTERRUPTED,
+                    self.ctx.vault.has_totp_secret_for,
+                )
                 return
 
             action_name = f"login for: {url}"
@@ -104,7 +160,13 @@ class Orchestrator:
                 logger.info(
                     f"Skipping automated login for {url}; continuing to observe for credentials"
                 )
-                await self.observer.observe(page)
+                await self._observe_then_log(
+                    page,
+                    url,
+                    Event.LOGIN_FINISHED,
+                    Event.LOGIN_INTERRUPTED,
+                    self.ctx.vault.has_totp_secret_for,
+                )
                 return
 
             logger.info("Handling login ...")
@@ -125,15 +187,22 @@ class Orchestrator:
                 logger.info(
                     f"Automated login for {url} did not complete; observing instead"
                 )
-                await self.observer.observe(page)
+                await self._observe_then_log(
+                    page,
+                    url,
+                    Event.LOGIN_FINISHED,
+                    Event.LOGIN_INTERRUPTED,
+                    self.ctx.vault.has_totp_secret_for,
+                )
+                return
             log_event(Event.LOGIN_FINISHED)
             return
 
+        logger.info(f"Url: {url} don't require login")
+
         logger.info(f"Checking if {url} needs 2FA")
 
-        if not await self.automator.is_2fa_page(page):
-            logger.info(f"Url: {url} don't need 2fa")
-        else:
+        if await self.automator.is_2fa_page(page):
             logger.info(f"Page requires 2FA: {url}")
             log_event(Event.TWO_FA_STARTED)
 
@@ -142,11 +211,19 @@ class Orchestrator:
                     f"No TOTP secret found for {url} yet; observing so we can "
                     "learn it (e.g. from a setup/QR page) for next time"
                 )
-                await self.observer.observe(page)
-
-                # Second check after observing, if we got a the totp_secrect
-                if not self.ctx.vault.has_totp_secret_for(url):
+                got_secret = await self._observe_then_log(
+                    page,
+                    url,
+                    Event.TWO_FA_FINISHED,
+                    Event.TWO_FA_INTERRUPTED,
+                    self.ctx.vault.has_totp_secret_for,
+                )
+                if not got_secret:
                     return
+                # We now have a secret, but _observe_then_log already logged
+                # TWO_FA_FINISHED for the "we learned it" step. Fall through
+                # to actually handle 2FA below using the freshly learned
+                # secret, matching the original two-step behavior.
 
             logger.info("TOTP secret found; handling 2FA")
 
@@ -158,7 +235,13 @@ class Orchestrator:
 
             if not await self.policy.should_act(action_name, ask):
                 logger.info(f"Skipping automated 2FA for {url}")
-                await self.observer.observe(page)
+                await self._observe_then_log(
+                    page,
+                    url,
+                    Event.TWO_FA_FINISHED,
+                    Event.TWO_FA_INTERRUPTED,
+                    self.ctx.vault.has_totp_secret_for,
+                )
                 return
 
             await self.policy.before_action(page)
@@ -174,8 +257,16 @@ class Orchestrator:
                 logger.info(
                     f"Automated 2FA for {url} did not complete; observing instead"
                 )
-                await self.observer.observe(page)
+                await self._observe_then_log(
+                    page,
+                    url,
+                    Event.TWO_FA_FINISHED,
+                    Event.TWO_FA_INTERRUPTED,
+                    self.ctx.vault.has_totp_secret_for,
+                )
                 return
             log_event(Event.TWO_FA_FINISHED)
+
+        logger.info(f"Url: {url} don't need 2fa")
 
         logger.info(f"Page is not a login or 2FA page; skipping: {url}")

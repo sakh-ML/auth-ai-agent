@@ -184,11 +184,11 @@ class AIAutomator:
 
             input_data = [{"role": "user", "content": f"{prompt}"}]
 
-            log_event(Event.ASKING_LLM_STARTED)
+            log_event(Event.ASKING_LLM_CHECK_LOGIN_STARTED)
             response = await self.ctx.ai_client.ask_client(
                 user_input=input_data, instructions=system_prompt
             )
-            log_event(Event.ASKING_LLM_FINISHED)
+            log_event(Event.ASKING_LLM_CHECK_LOGIN_FINISHED)
 
             response = response.output_text.strip().lower()
             return response == "yes"
@@ -205,11 +205,11 @@ class AIAutomator:
 
             input_data = [{"role": "user", "content": f"{prompt}"}]
 
-            log_event(Event.ASKING_LLM_STARTED)
+            log_event(Event.ASKING_LLM_CHECK_2FA_STARTED)
             response = await self.ctx.ai_client.ask_client(
                 user_input=input_data, instructions=system_prompt
             )
-            log_event(Event.ASKING_LLM_FINISHED)
+            log_event(Event.ASKING_LLM_CHECK_2FA_FINISHED)
 
             response = response.output_text.strip().lower()
             return response == "yes"
@@ -239,11 +239,11 @@ class AIAutomator:
 
             input_list = [{"role": "user", "content": f"{prompt}"}]
 
-            log_event(Event.ASKING_LLM_STARTED)
+            log_event(Event.ASKING_LLM_HANDLE_LOGIN_STARTED)
             response = await self.ctx.ai_client.ask_client(
                 user_input=input_list, instructions=system_prompt, tools=TOOLS
             )
-            log_event(Event.ASKING_LLM_FINISHED)
+            log_event(Event.ASKING_LLM_HANDLE_LOGIN_FINISHED)
 
             return await self._run_tool_calls(page, response, human_like)
 
@@ -279,11 +279,11 @@ class AIAutomator:
 
             input_list = [{"role": "user", "content": f"{prompt}"}]
 
-            log_event(Event.ASKING_LLM_STARTED)
+            log_event(Event.ASKING_LLM_HANDLE_2FA_STARTED)
             response = await self.ctx.ai_client.ask_client(
                 user_input=input_list, instructions=system_prompt, tools=TOOLS
             )
-            log_event(Event.ASKING_LLM_FINISHED)
+            log_event(Event.ASKING_LLM_HANDLE_2FA_FINISHED)
 
             return await self._run_tool_calls(page, response, human_like)
 

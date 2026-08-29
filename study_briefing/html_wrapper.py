@@ -117,6 +117,18 @@ def wait_for_start(participant_id: int, agent_mode: str) -> bool:
 
 def start(participant_id: int, mode: str | None):
     try:
+        # Log Agent order before starting the start page
+        if mode:
+            order_agents = [mode]
+        else:
+            order_agents = get_agent_order(participant_id)
+
+        logger.info(
+            "Participant %s has agent order: %s",
+            participant_id,
+            order_agents,
+        )
+
         # We only need to show the start page once per run
         result = asyncio.run(show_start_page())
 
@@ -131,11 +143,6 @@ def start(participant_id: int, mode: str | None):
 
         # Otherwise, run the full order
         agents_order = get_agent_order(participant_id)
-        logger.info(
-            "Participant %s has agent order: %s",
-            participant_id,
-            agents_order,
-        )
 
         # Start the first agent immediately.
         run_agent(
