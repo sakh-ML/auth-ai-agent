@@ -10,6 +10,7 @@ credentials and LLM capabilities.
 from models import AgentMode
 from vault import CredentialVault
 from client import AIClientBase
+from modes import make_policy
 
 
 class AgentContext:
@@ -18,3 +19,4 @@ class AgentContext:
         self.mode = mode
         self.ai_client = ai_client
         self.vault = CredentialVault()
+        self.policy = make_policy(mode)

@@ -97,7 +97,7 @@ async def run(start_url: str, mode: AgentMode) -> None:
 def main() -> None:
     """Parses CLI arguments, sets up logging, and triggers the asynchronous run loop."""
 
-    parser = argparse.ArgumentParser(description="Study automation agent")
+    parser = argparse.ArgumentParser(description="LLM Automation agent")
     parser.add_argument(
         "--participant_id",
         type=int,
@@ -117,7 +117,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    setup_logging(args.participant_id, args.mode)
+    participant_id = args.participant_id
+    if participant_id < 0:
+        raise RuntimeError("Participant-ID can't be negative")
+
+    setup_logging(participant_id, args.mode)
 
     asyncio.run(run(args.url, MODE_MAP[args.mode]))
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 
+
 _DIALOG_JS = """
 (payload) => {
     const { question, fnName } = payload;
@@ -19,42 +20,79 @@ _DIALOG_JS = """
 
     el = document.createElement('div');
     el.id = '__agent_dialog__';
+    
+    // Center the popup on the screen so it's impossible to miss
     el.style.position = 'fixed';
-    el.style.top = '16px';
-    el.style.right = '16px';
+    el.style.top = '50%';
+    el.style.left = '50%';
+    el.style.transform = 'translate(-50%, -50%)';
     el.style.zIndex = '2147483647';
-    el.style.background = '#1f2937';
-    el.style.color = '#fff';
-    el.style.padding = '16px 20px';
-    el.style.borderRadius = '10px';
-    el.style.fontFamily = 'sans-serif';
-    el.style.fontSize = '14px';
-    el.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)';
-    el.style.maxWidth = '320px';
+    
+    // Classy, modern design - Compact Version
+    el.style.background = '#ffffff';
+    el.style.color = '#111827';
+    el.style.padding = '24px'; 
+    el.style.borderRadius = '12px';
+    el.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+    el.style.textAlign = 'center';
+    el.style.maxWidth = '320px'; 
+    el.style.width = '90%';
+    
+    // The "backdrop hack": this dims the rest of the screen behind the popup
+    el.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1), 0 0 0 9999px rgba(0,0,0,0.4)';
+
+    // Smooth, professional fade-in
+    el.animate([
+        { opacity: 0, transform: 'translate(-50%, -48%)' },
+        { opacity: 1, transform: 'translate(-50%, -50%)' }
+    ], { duration: 300, easing: 'ease-out' });
 
     const text = document.createElement('div');
     text.textContent = question;
-    text.style.marginBottom = '12px';
+
+    text.style.whiteSpace = 'pre-wrap';
+
+    text.style.fontSize = '15px'; 
+    text.style.fontWeight = '500';
+    text.style.lineHeight = '1.4';
+    text.style.marginBottom = '20px'; 
     el.appendChild(text);
 
     const row = document.createElement('div');
     row.style.display = 'flex';
-    row.style.gap = '8px';
+    row.style.justifyContent = 'center';
+    row.style.gap = '10px';
 
+    // Primary Button (Yes)
     const yes = document.createElement('button');
     yes.textContent = 'Ja';
-    yes.style.padding = '6px 14px';
+    yes.style.padding = '8px 20px'; 
+    yes.style.fontSize = '14px';
+    yes.style.fontWeight = '600';
     yes.style.cursor = 'pointer';
-    yes.style.border = 'none';
-    yes.style.borderRadius = '6px';
+    yes.style.border = '1px solid #111827';
+    yes.style.background = '#111827';
+    yes.style.color = '#ffffff';
+    yes.style.borderRadius = '8px';
+    yes.style.transition = 'background 0.2s';
+    yes.onmouseover = () => yes.style.background = '#374151';
+    yes.onmouseout = () => yes.style.background = '#111827';
     yes.onclick = () => { window[fnName](true); };
 
+    // Secondary Button (No)
     const no = document.createElement('button');
     no.textContent = 'Nein';
-    no.style.padding = '6px 14px';
+    no.style.padding = '8px 20px'; 
+    no.style.fontSize = '14px';
+    no.style.fontWeight = '600';
     no.style.cursor = 'pointer';
-    no.style.border = 'none';
-    no.style.borderRadius = '6px';
+    no.style.border = '1px solid #d1d5db';
+    no.style.background = '#ffffff';
+    no.style.color = '#374151';
+    no.style.borderRadius = '8px';
+    no.style.transition = 'background 0.2s';
+    no.onmouseover = () => no.style.background = '#f3f4f6';
+    no.onmouseout = () => no.style.background = '#ffffff';
     no.onclick = () => { window[fnName](false); };
 
     row.appendChild(yes);

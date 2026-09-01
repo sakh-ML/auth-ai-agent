@@ -105,8 +105,7 @@ class AIAutomator:
 
         match function:
             case FunctionLLMTool.CLICK_ELEMENT:
-                await click_element(page, arguments["selector"])
-                return True
+                return await click_element(page, arguments["selector"])
 
             case FunctionLLMTool.WRITE_IN_FIELD:
                 field = arguments["field"]
@@ -120,6 +119,9 @@ class AIAutomator:
                     )
                     return False
 
+                # Empty field before writing anything
+                await write_in_field(page, field, "")
+
                 # Redact logs if value is a credential
                 sensitive_placeholders = [
                     PLACEHOLDER_EMAIL,
@@ -131,12 +133,7 @@ class AIAutomator:
                 )
                 logger.info("Writing in field (%s) with value %s", field, log_val)
 
-                if human_like:
-                    await page.click(field)
-                    await page.type(field, real_value, delay=110)
-                else:
-                    await write_in_field(page, field, real_value)
-                return True
+                return await write_in_field(page, field, real_value, human_like)
 
             case _:
                 raise RuntimeError(

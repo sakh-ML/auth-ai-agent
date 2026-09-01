@@ -196,6 +196,10 @@ class CredentialVault:
         base_domain = self._get_base_domain(domain)
         return self._store.get(base_domain)
 
+    def get_totp_secret(self, url: str) -> str | None:
+        credential = self.get_credential(url)
+        return credential.totp_secret if credential else None
+
     def has_credential_for(self, url: str) -> bool:
         """Return True if a complete credential exists for the base domain."""
         credential = self.get_credential(url)

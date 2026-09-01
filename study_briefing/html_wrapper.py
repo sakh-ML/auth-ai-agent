@@ -39,6 +39,27 @@ def get_agent_order(participant_id: int) -> list[str]:
     return agents_order
 
 
+def log_current_run(participant_id: int, mode: str):
+    logger.info(
+        "Participant %s current agent run: %s",
+        participant_id,
+        mode,
+    )
+
+
+def log_agent_order(participant_id: int, mode: str | None):
+    if mode:
+        order_agents = [mode]
+    else:
+        order_agents = get_agent_order(participant_id)
+
+    logger.info(
+        "Participant %s has agent order: %s",
+        participant_id,
+        order_agents,
+    )
+
+
 def run_agent(participant_id: int, agent_mode: str) -> None:
     """Start the existing src/main.py."""
     args = [
@@ -99,65 +120,42 @@ async def show_start_page() -> bool:
         server.stop()
 
 
-def wait_for_start(participant_id: int, agent_mode: str) -> bool:
-    """Wait for Enter before starting an agent.
-    Returns False if the user presses Ctrl+C.
-    """
+def run_agents(participant_id: int, mode: str):
+
     try:
-        input(
-            f"\nPress Enter to start "
-            f"agent {agent_mode} for participant {participant_id} ... "
-        )
-        return True
-    except KeyboardInterrupt:
-        print()
-        logger.info("Stopped by user.")
-        return False
-
-
-def start(participant_id: int, mode: str | None):
-    try:
-        # Log Agent order before starting the start page
-        if mode:
-            order_agents = [mode]
-        else:
-            order_agents = get_agent_order(participant_id)
-
-        logger.info(
-            "Participant %s has agent order: %s",
-            participant_id,
-            order_agents,
-        )
-
-        # We only need to show the start page once per run
+        # Show the start page and waiting for the participant to start the study
         result = asyncio.run(show_start_page())
 
         # If the browser was closed or interrupted before starting
         if not result:
             return
 
-        # If a specific mode was provided in the CLI, run it and exit
+        # Single mode execution from CLI
         if mode:
+            log_current_run(participant_id=participant_id, mode=mode)
             run_agent(participant_id=participant_id, agent_mode=mode)
             return
 
         # Otherwise, run the full order
         agents_order = get_agent_order(participant_id)
 
-        # Start the first agent immediately.
+        # Run first agent
+        log_current_run(participant_id=participant_id, mode=agents_order[0])
         run_agent(
             participant_id=participant_id,
             agent_mode=agents_order[0],
         )
 
-        # For all remaining agents, wait for the terminal prompt
+        # Run remaining agents, waiting for briefing start page before each
         for agent_mode in agents_order[1:]:
-            if not wait_for_start(
-                participant_id=participant_id,
-                agent_mode=agent_mode,
-            ):
+            # Show the start page and waiting for the participant to start the study
+            result = asyncio.run(show_start_page())
+
+            # If the browser was closed or interrupted before starting
+            if not result:
                 return
 
+            log_current_run(participant_id=participant_id, mode=agent_mode)
             run_agent(
                 participant_id=participant_id,
                 agent_mode=agent_mode,
@@ -167,6 +165,13 @@ def start(participant_id: int, mode: str | None):
         logger.info("Study stopped by user.")
     except Exception as e:
         logger.exception("Study wrapper stopped: %s", e)
+
+
+def start(participant_id: int, mode: str | None):
+    # Log Agent order before starting the start page
+    log_agent_order(participant_id=participant_id, mode=mode)
+
+    run_agents(participant_id, mode)
 
 
 def main() -> None:
@@ -191,8 +196,12 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    participant_id = args.participant_id
+    if participant_id < 0:
+        raise RuntimeError("Participant-ID can't be negative")
+
     # Start the process with the provided CLI args
-    start(args.participant_id, args.mode)
+    start(participant_id, args.mode)
 
 
 if __name__ == "__main__":

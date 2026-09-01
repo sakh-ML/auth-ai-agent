@@ -56,13 +56,25 @@ TOOLS = [
 ]
 
 
-async def write_in_field(page, field: str, value: str):
+async def write_in_field(page, field: str, value: str, as_human: bool = False) -> bool:
     """Write the value in the field, (Value : some_username) (Field: #username)"""
     """ Something like: write_in_field(some_username, #username)"""
 
     if not page:
-        return
-    await page.fill(field, value)
+        raise ValueError("page is required")
+
+    # Check if the field exists before writing in it
+    locator = page.locator(field)
+    if await locator.count() == 0:
+        return False
+
+    if as_human:
+        await page.click(field)
+        await page.type(field, value, delay=110)
+    else:
+        await page.fill(field, value)
+
+    return True
 
 
 async def click_element(page, selector: str):
@@ -72,8 +84,15 @@ async def click_element(page, selector: str):
     """
 
     if not page:
-        return
+        raise ValueError("page is required")
+
+    # Check if the selector exists before clicking
+    element = page.locator(selector)
+    if await element.count() == 0:
+        return False
+
     await page.click(selector)
+    return True
 
 
 class AIClientBase(ABC):
